@@ -1,0 +1,13 @@
+%chk=test001a
+#p test freq output=mat
+
+Test calculation for the NIO program on formaldehyde.
+
+0  1
+  C       -0.000000   -0.000000    0.028622
+  O        0.000000    0.000000    1.245352
+  H        0.926427   -0.000000   -0.566987
+  H       -0.926427    0.000000   -0.566987
+
+test001a.mat
+
