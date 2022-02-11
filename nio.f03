@@ -22,12 +22,17 @@ INCLUDE 'nio_mod.f03'
       real(kind=real64),dimension(:,:),allocatable::distanceMatrix
       character(len=512)::matrixFilename1,matrixFilename2,tmpString
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,GMatrixFile2
-      type(MQC_Variable)::tmpMQCvar
       type(MQC_Variable)::nEalpha,nEbeta,nEtot,KEnergy,VEnergy,OneElEnergy,  &
         TwoElEnergy,scfEnergy
-      type(MQC_Variable)::SMatrixAO,TMatrixAO,VMatrixAO,HCoreMatrixAO,  &
-        FMatrixAlpha,FMatrixBeta,PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
-        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,  &
+      type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
+        SMatrixAOHalf,SMatrixAOMinusHalf
+      type(MQC_Variable)::tmpMQCvar
+      type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
+        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
+        diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
+        diffDensityBetaEVecs,diffDensityBetaEVals
+      type(MQC_Variable)::TMatrixAO,VMatrixAO,HCoreMatrixAO,  &
+        FMatrixAlpha,FMatrixBeta,  &
         ERIs,JMatrixAlpha,KMatrixAlpha
       type(MQC_R4Tensor)::tmpR4
 !
@@ -70,11 +75,66 @@ INCLUDE 'nio_mod.f03'
       if(nBasisUse.ne.nBasisUse2)  &
         call mqc_error('nBasisUse must be the same in the two matrix file!')
       write(IOut,1100) nAtoms,nBasis,nBasisUse
-
       write(iOut,*)
       write(iOut,*)' Hrant - the unit number for the first  matrix file is: ',GMatrixFile1%UnitNumber
       write(iOut,*)' Hrant - the unit number for the second matrix file is: ',GMatrixFile2%UnitNumber
       write(iOut,*)
+!
+!     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
+!
+      call GMatrixFile1%getArray('OVERLAP',mqcVarOut=SMatrixAO)
+      call SMatrixAO%print(header='Overlap Matrix')
+      call SMatrixAO%eigen(SMatrixEVals,SMatrixEVecs)
+      call SMatrixEVals%print(header='S matrix eigen-values:')
+
+      call mqc_print(MatMul(Transpose(SMatrixEVecs),SMatrixEVecs),header='SEVecs(t).SEVecs')
+      call mqc_print(MatMul(MatMul(SMatrixEVecs,SMatrixEVals%diag()),TRANSPOSE(SMatrixEVecs)),6,'U.lambda.Ut')
+
+      tmpMQCvar = SMatrixEVals%rpower(0.5)
+      SMAtrixAOHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
+      tmpMQCvar = SMatrixEVals%rpower(-0.5)
+      SMAtrixAOMinusHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
+
+      call SMAtrixAOHalf%print(header='S**(1/2)')
+      call SMatrixAOMinusHalf%print(header='S**(-1/2)')
+
+!
+!     Load the density matrices. The code below treats all systems as open
+!     shell, so closed shell results are handled by copying the density matrix
+!     from restricted calculations into alpha and beta density matrix arrays.
+!
+      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+      if(GMatrixFile1%isUnrestricted()) then
+        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+      else
+        PMatrixBeta1  = PMatrixAlpha1
+      endIf
+      PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
+      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      if(GMatrixFile2%isUnrestricted()) then
+        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+      else
+        PMatrixBeta2  = PMatrixAlpha2
+      endIf
+      PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
+!
+!     Form the difference density and construct the NIOs.
+!
+      diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
+      diffDensityBeta  = PMatrixBeta2-PMatrixBeta1
+
+      call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='P(alpha).S')
+      call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
+
+      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
+      call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
+      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
+      call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
+
+      call diffDensityAlphaEVals%print(header='Alpha Occ Change EVals')
+      call diffDensityBetaEVals%print(header='Beta Occ Change EVals')
+
+      goto 999
 
 !
 !     Figure out nAt3, then allocate memory for key arrays.
