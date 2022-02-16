@@ -26,6 +26,7 @@ INCLUDE 'nio_mod.f03'
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
+      logical::DEBUG=.false.
 !
 !     Format Statements
 !
@@ -143,57 +144,27 @@ INCLUDE 'nio_mod.f03'
 !     Form the polestrength.
 !
       tmpMQCvar = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
-      write(*,*)
       call tmpMQCvar%print(header='V')
-      write(*,*)
-      write(*,*)
       TAlpha = MatMul(Transpose(CAlpha2),MatMul(SMatrixAO,tmpMQCvar))
-      call TAlpha%print(header='TAlpha')
       tmpMQCvar = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
       TBeta = MatMul(Transpose(CBeta2),MatMul(SMatrixAO,tmpMQCvar))
-      call TBeta%print(header='TBeta')
-
-      call mqc_print(MatMul(Transpose(TAlpha),TAlpha),header='TAlpha(t).TAlpha')
-      call mqc_print(MatMul(Transpose(MQC_Variable_SubMatrix(TAlpha,newrange1=[1,nElAlpha1])),  &
-        MQC_Variable_SubMatrix(TAlpha,newrange1=[1,nElAlpha1])),header='TAlpha(occ)(t).TAlpha(occ)')
-      call mqc_print(MatMul(Transpose(TBeta),TBeta),header='TBeta(t).TBeta')
-
-      write(*,*)
-      write(*,*)
-      write(*,*)
-      write(*,*)' Hrant - Trying subMatrx function on T(t).T.'
-      call TAlpha%print(header='TAlpha')
+      if(DEBUG) then
+        call TAlpha%print(header='TAlpha')
+        call TBeta%print(header='TBeta')
+        call mqc_print(MatMul(Transpose(TAlpha),TAlpha),header='TAlpha(t).TAlpha')
+        call mqc_print(MatMul(Transpose(TBeta),TBeta),header='TBeta(t).TBeta')
+      endIf
       tmpMQCvar = MQC_Variable_SubMatrix(TAlpha,newrange1=[1,nElAlpha2])
-      call tmpMQCvar%print(header='TAlpha(occ)')
-      call mqc_print(MatMul(Transpose(TAlpha),TAlpha),header='TAlpha(t).TAlpha')
-      call mqc_print(MatMul(Transpose(tmpMQCvar),tmpMQCvar),header='TAlpha(occ)(t).TAlpha(occ)')
-      call mqc_print(MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),diffDensityAlphaEVals%diag()),header='TAlpha(occ)(t).TAlpha(occ).delta')
-
-
-      call mqc_print(diffDensityAlphaEVals%diag(),header='diag(evals)')
-
-
       tmpMQCvar1 = MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),diffDensityAlphaEVals%diag())
-
-      call tmpMQCvar1%print(header='Tt.T.diagE')
-
       tmpMQCvar2 = MQC_Variable_UnitMatrix(nBasis)
-
-      call tmpMQCvar2%print(header='unit matrix (nBasis)')
-
       tmpMQCvar3 = tmpMQCvar2 - tmpMQCvar1
-!hph      tmpMQCvar1 = MQC_Variable_UnitMatrix(nElAlpha2) - MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),diffDensityAlphaEVals%diag())
-      call tmpMQCvar3%print(header='I-T(occ)(t).T(occ).delta')
-      call tmpMQCvar3%eigen(tmpMQCvar1,tmpMQCvar2)
-      write(*,*)
-      write(*,*)
-      write(*,*)' Diagonalizing the final matrix...'
-      call tmpMQCvar3%print(header='Final matrix')
-
-      write(*,*)
-      write(*,*)
+      if(DEBUG) then
+        call tmpMQCvar1%print(header='Tt.T.diagE')
+        call tmpMQCvar2%print(header='unit matrix (nBasis)')
+        call tmpMQCvar3%print(header='I-T(occ)(t).T(occ).delta')
+      endIf
       tmpMQCvar = tmpMQCvar3%det()
-      call tmpMQCvar%print(header='Alpha Determinant')
+      call tmpMQCvar%print(header='Alpha Polestrength')
 
       goto 999
 
