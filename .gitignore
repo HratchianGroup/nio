@@ -30,3 +30,11 @@
 *.exe
 *.out
 *.app
+
+# Gaussian files
+*.chk
+*.fchk
+*.mat
+*.log
+*.out
+

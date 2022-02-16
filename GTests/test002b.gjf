@@ -1,0 +1,10 @@
+%oldchk=test002a
+%chk=test002b
+#p test geom=check guess=read uhf 6-311++g output=mat
+
+Test calculation for the NIO program on NH3.
+
+1  2
+
+test002b.mat
+

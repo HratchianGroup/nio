@@ -1,0 +1,10 @@
+%chk=test002a
+#p test uhf 6-311++g opt freq output=mat
+
+Test calculation for the NIO program on NH3.
+
+0  1
+n h h h
+
+test002a.mat
+

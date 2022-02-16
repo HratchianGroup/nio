@@ -1,0 +1,10 @@
+%chk=test003a
+#p test geom=modela uhf opt output=mat
+
+Test calculation for the NIO program on LiH.
+
+0  1
+li h
+
+test003a.mat
+
