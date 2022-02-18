@@ -1,0 +1,14 @@
+%oldchk=test101a
+%chk=test101b
+#p test uhf geom=check guess=permute output=mat
+
+Formaldehyde n --> pi* excited state calc.
+
+0 1
+
+1-7,9,8,10-12
+
+1-12
+
+test101b.mat
+

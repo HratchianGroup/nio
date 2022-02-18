@@ -37,4 +37,6 @@
 *.mat
 *.log
 *.out
-
+*.sbatch
+*.sub
+*.qlog

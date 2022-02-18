@@ -15,17 +15,21 @@ INCLUDE 'nio_mod.f03'
       implicit none
       integer(kind=int64)::nCommands,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
-        nElBeta1,nElAlpha2,NElBeta2
+        nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
+        iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
+        iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne
       character(len=512)::matrixFilename1,matrixFilename2
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,GMatrixFile2
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
+      type(MQC_Variable)::NDDOsAlpha,NDDOsBeta
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
+      logical::isNIO,isNDDO
       logical::DEBUG=.false.
 !
 !     Format Statements
@@ -39,6 +43,9 @@ INCLUDE 'nio_mod.f03'
  1200 Format(1x,'Atomic Coordinates (Angstrom)')
  1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
  1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
+ 2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
+        1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2,/,  &
+        1x,'isNIO=',L1,3x,'isNDDO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
 !
 !
@@ -83,21 +90,21 @@ INCLUDE 'nio_mod.f03'
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
       call GMatrixFile1%getArray('OVERLAP',mqcVarOut=SMatrixAO)
-      call SMatrixAO%print(header='Overlap Matrix')
       call SMatrixAO%eigen(SMatrixEVals,SMatrixEVecs)
-      call SMatrixEVals%print(header='S matrix eigen-values:')
-
-      call mqc_print(MatMul(Transpose(SMatrixEVecs),SMatrixEVecs),header='SEVecs(t).SEVecs')
-      call mqc_print(MatMul(MatMul(SMatrixEVecs,SMatrixEVals%diag()),TRANSPOSE(SMatrixEVecs)),6,'U.lambda.Ut')
-
+      if(DEBUG) then
+        call SMatrixAO%print(header='Overlap Matrix')
+        call SMatrixEVals%print(header='S matrix eigen-values:')
+        call mqc_print(MatMul(Transpose(SMatrixEVecs),SMatrixEVecs),header='SEVecs(t).SEVecs')
+        call mqc_print(MatMul(MatMul(SMatrixEVecs,SMatrixEVals%diag()),TRANSPOSE(SMatrixEVecs)),6,'U.lambda.Ut')
+      endIf
       tmpMQCvar = SMatrixEVals%rpower(0.5)
       SMAtrixAOHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
       tmpMQCvar = SMatrixEVals%rpower(-0.5)
       SMAtrixAOMinusHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
-
-      call SMAtrixAOHalf%print(header='S**(1/2)')
-      call SMatrixAOMinusHalf%print(header='S**(-1/2)')
-
+      if(DEBUG) then
+        call SMAtrixAOHalf%print(header='S**(1/2)')
+        call SMatrixAOMinusHalf%print(header='S**(-1/2)')
+      endIf
 !
 !     Load the density matrices. The code below treats all systems as open
 !     shell, so closed shell results are handled by copying the density matrix
@@ -124,55 +131,47 @@ INCLUDE 'nio_mod.f03'
       endIf
       PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
 !
-!     Form the difference density and construct the NIOs.
+!     Form the difference density and construct the NDDOs, which are NIOs in
+!     electron detachment cases.
 !
       diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
       diffDensityBeta  = PMatrixBeta2-PMatrixBeta1
-
       call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='P(alpha).S')
       call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
-
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
+      NDDOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-
+      NDDOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
       call diffDensityAlphaEVals%print(header='Alpha Occ Change EVals')
       call diffDensityBetaEVals%print(header='Beta Occ Change EVals')
-
 !
-!     Form the polestrength.
+!     Form the polestrength (for detachment cases) or the N-1 overlap (for
+!     excitation cases). At the end of this block, we decide if this is a
+!     detachment (<isNIO>) or excitation job (<isNDDO>).
 !
-      tmpMQCvar = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
-      call tmpMQCvar%print(header='V')
-      TAlpha = MatMul(Transpose(CAlpha2),MatMul(SMatrixAO,tmpMQCvar))
-      tmpMQCvar = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
-      TBeta = MatMul(Transpose(CBeta2),MatMul(SMatrixAO,tmpMQCvar))
-      if(DEBUG) then
-        call TAlpha%print(header='TAlpha')
-        call TBeta%print(header='TBeta')
-        call mqc_print(MatMul(Transpose(TAlpha),TAlpha),header='TAlpha(t).TAlpha')
-        call mqc_print(MatMul(Transpose(TBeta),TBeta),header='TBeta(t).TBeta')
-      endIf
-      tmpMQCvar = MQC_Variable_SubMatrix(TAlpha,newrange1=[1,nElAlpha2])
-      tmpMQCvar1 = MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),diffDensityAlphaEVals%diag())
-      tmpMQCvar2 = MQC_Variable_UnitMatrix(nBasis)
-      tmpMQCvar3 = tmpMQCvar2 - tmpMQCvar1
-      if(DEBUG) then
-        call tmpMQCvar1%print(header='Tt.T.diagE')
-        call tmpMQCvar2%print(header='unit matrix (nBasis)')
-        call tmpMQCvar3%print(header='I-T(occ)(t).T(occ).delta')
-      endIf
-      tmpMQCvar = tmpMQCvar3%det()
-      call tmpMQCvar%print(header='Alpha Polestrength')
+      call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
+        diffDensityAlphaEVals,diffDensityAlphaEVecs,CAlpha2,nElAlpha2,  &
+        nBasis,tmpMQCvar,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
+        iMinusOneAlpha)
+      call tmpMQCvar%print(header='determinant overlap for ALPHA')
+      call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
+        diffDensityBetaEVals,diffDensityBetaEVecs,CBeta2,nElBeta2,  &
+        nBasis,tmpMQCvar,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
+        iMinusOneBeta)
+      call tmpMQCvar%print(header='determinant overlap for BETA ')
+      isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
+        (nMinusOneAlpha+nMinusOneBeta).eq.1)
+      isNDDO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
+        (nMinusOneAlpha+nMinusOneBeta).eq.1)
+      write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
+        nMinusOneBeta,isNIO,isNDDO
+!
+!     Compute the transition dipole and oscillator strength for NDDO jobs.
+!
 
-      goto 999
 
-      call mqc_print(MatMul(Transpose(TBeta),TBeta),header='TBeta(t).TBeta')
-      call mqc_print(MatMul(Transpose(TAlpha),MatMul(TAlpha,diffDensityAlphaEVals%diag())),header='TAlpha(t).TAlpha.delta')
-      call mqc_print(MatMul(Transpose(TBeta),MatMul(TBeta,diffDensityBetaEVals%diag())),header='TBeta(t).TBeta.delta')
-
-      goto 999
 
 
 !

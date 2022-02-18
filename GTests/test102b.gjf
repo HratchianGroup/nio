@@ -1,0 +1,15 @@
+%oldchk=test102a
+%chk=test102b
+#p test uhf geom=check guess=permute output=mat
+scf=qc
+
+H2 sigma --> sigma* excited state calc.
+
+0 1
+
+2 1
+
+1-2
+
+test102b.mat
+
