@@ -68,12 +68,14 @@
       do i = 1,nBasis
         if(vector(i).ge.0.999) then
           vector(i) = float(0)
+          iPlusOne = i
           nPlusOne = nPlusOne + 1
         endIf
       endDo
       do i = 1,nBasis
         if(vector(i).le.-0.999) then
           vector(i) = float(0)
+          iMinusOne = i
           nMinusOne = nMinusOne + 1
         endIf
       endDo

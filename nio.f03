@@ -18,18 +18,20 @@ INCLUDE 'nio_mod.f03'
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne
+      real(kind=real64),dimension(3)::transitionDipole
       character(len=512)::matrixFilename1,matrixFilename2
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,GMatrixFile2
+      type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
-      type(MQC_Variable)::NDDOsAlpha,NDDOsBeta
-      type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
-      logical::isNIO,isNDDO
+      type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
+      type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
+      logical::isNIO,isDDNO
       logical::DEBUG=.false.
 !
 !     Format Statements
@@ -45,7 +47,7 @@ INCLUDE 'nio_mod.f03'
  1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
  2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
         1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2,/,  &
-        1x,'isNIO=',L1,3x,'isNDDO=',L1)
+        1x,'isNIO=',L1,3x,'isDDNO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
 !
 !
@@ -131,7 +133,7 @@ INCLUDE 'nio_mod.f03'
       endIf
       PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
 !
-!     Form the difference density and construct the NDDOs, which are NIOs in
+!     Form the difference density and construct the DDNOs, which are NIOs in
 !     electron detachment cases.
 !
       diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
@@ -140,16 +142,16 @@ INCLUDE 'nio_mod.f03'
       call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
-      NDDOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
+      DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-      NDDOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+      DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
       call diffDensityAlphaEVals%print(header='Alpha Occ Change EVals')
       call diffDensityBetaEVals%print(header='Beta Occ Change EVals')
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
 !     excitation cases). At the end of this block, we decide if this is a
-!     detachment (<isNIO>) or excitation job (<isNDDO>).
+!     detachment (<isNIO>) or excitation job (<isDDNO>).
 !
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityAlphaEVals,diffDensityAlphaEVecs,CAlpha2,nElAlpha2,  &
@@ -163,17 +165,54 @@ INCLUDE 'nio_mod.f03'
       call tmpMQCvar%print(header='determinant overlap for BETA ')
       isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
-      isNDDO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
+      isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
-        nMinusOneBeta,isNIO,isNDDO
+        nMinusOneBeta,isNIO,isDDNO
 !
-!     Compute the transition dipole and oscillator strength for NDDO jobs.
+!     Compute the transition dipole and oscillator strength for DDNO jobs.
 !
+      if(isDDNO) then
+        call GMatrixFile1%getArray('Dipole Integrals',  &
+          mqcVarOut=dipoleAOx,arraynum=1)
+        call GMatrixFile1%getArray('Dipole Integrals',  &
+          mqcVarOut=dipoleAOy,arraynum=2)
+        call GMatrixFile1%getArray('Dipole Integrals',  &
+          mqcVarOut=dipoleAOz,arraynum=3)
+        if(DEBUG) then
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOx),header='P(total).dipoleX')
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOy),header='P(total).dipoleY')
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOz),header='P(total).dipoleZ')
+        endIf
+        write(*,*)' iPlusOneAlpha  = ',iPlusOneAlpha
+        write(*,*)' iMinusOneAlpha = ',iMinusOneAlpha
 
 
+        if(iPlusOneAlpha.gt.0) then
+          pDDNO = DDNOsAlpha%column(iPlusOneAlpha)
+        elseIf(iPlusOneBeta.gt.0) then
+          pDDNO = DDNOsBeta%column(iPlusOneBeta)
+        else
+          call mqc_error('No particle DDNO located.')
+        endIf
+        if(iMinusOneAlpha.gt.0) then
+          hDDNO = DDNOsAlpha%column(iMinusOneAlpha)
+        elseIf(iMinusOneBeta.gt.0) then
+          hDDNO = DDNOsBeta%column(iMinusOneBeta)
+        else
+          call mqc_error('No hole DDNO located.')
+        endIf
+        call pDDNO%print(header='particle DDNO')
+        call hDDNO%print(header='hole DDNO')
+        transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
+        transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
+        transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
+        write(*,*)' transition dipole contribution to f = ',dot_product(transitionDipole,transitionDipole)
 
-
+        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOx,pDDNO)),header='h.dipoleX.p=')
+        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO)),header='h.dipoleY.p=')
+        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOz,pDDNO)),header='h.dipoleZ.p=')
+      endIf
 !
   999 Continue
       write(iOut,8999)
