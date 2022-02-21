@@ -23,7 +23,7 @@ INCLUDE 'nio_mod.f03'
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
         GMatrixFile2,GMatrixFileOut
       type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO,  &
-        oscillatorStrength,OSOverlapA,OSOverlapB,OSTransitionDipole
+        dipoleStrength,TDOverlapA,TDOverlapB,TDparticleHoleMag
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
@@ -157,14 +157,14 @@ INCLUDE 'nio_mod.f03'
 !
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityAlphaEVals,diffDensityAlphaEVecs,CAlpha2,nElAlpha2,  &
-        nBasis,OSOverlapA,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
+        nBasis,TDOverlapA,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
         iMinusOneAlpha)
-      call OSOverlapA%print(header='determinant overlap for ALPHA')
+      call TDOverlapA%print(header='determinant overlap for ALPHA')
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityBetaEVals,diffDensityBetaEVecs,CBeta2,nElBeta2,  &
-        nBasis,OSOverlapB,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
+        nBasis,TDOverlapB,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
         iMinusOneBeta)
-      call OSOverlapB%print(header='determinant overlap for BETA ')
+      call TDOverlapB%print(header='determinant overlap for BETA ')
       isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
@@ -172,7 +172,7 @@ INCLUDE 'nio_mod.f03'
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta,isNIO,isDDNO
 !
-!     Compute the transition dipole and oscillator strength for DDNO jobs.
+!     Compute the transition dipole and dipole strength for DDNO jobs.
 !
       if(isDDNO) then
         call GMatrixFile1%getArray('Dipole Integrals',  &
@@ -227,12 +227,12 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
         call mqc_print(6,transitionDipole,header='Transition Dipole Moment')
-        OSTransitionDipole = dot_product(transitionDipole,transitionDipole)
-        call OSTransitionDipole%print(header='Transition Dipole contribution to the Osillator Strength =')
-        oscillatorStrength = OSOverlapA*OSOverlapB*OSTransitionDipole
-        call oscillatorStrength%print(header='OLD Oscillator Strength (au) =')
-        oscillatorStrength = OSOverlapA*OSOverlapA*OSOverlapB*OSOverlapB*OSTransitionDipole
-        call oscillatorStrength%print(header='NEW Oscillator Strength (au) =')
+        TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
+        call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
+        dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
+        call dipoleStrength%print(header='OLD Dipole Strength (au) =')
+        dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
+        call dipoleStrength%print(header='NEW Dipole Strength (au) =')
       endIf
 !
 !     Write results to the output Gaussian matrix file.
