@@ -181,7 +181,7 @@ INCLUDE 'nio_mod.f03'
           mqcVarOut=dipoleAOy,arraynum=2)
         call GMatrixFile1%getArray('Dipole Integrals',  &
           mqcVarOut=dipoleAOz,arraynum=3)
-        if(DEBUG) then
+        if(DEBUG.or..TRUE.) then
           call mqc_print(contraction(PMatrixTotal1,dipoleAOx),header='P(total).dipoleX')
           call mqc_print(contraction(PMatrixTotal1,dipoleAOy),header='P(total).dipoleY')
           call mqc_print(contraction(PMatrixTotal1,dipoleAOz),header='P(total).dipoleZ')
@@ -207,6 +207,7 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
+        call mqc_print(6,transitionDipole,header='Transition Dipole Moment')
         OSTransitionDipole = dot_product(transitionDipole,transitionDipole)
         call OSTransitionDipole%print(header='Transition Dipole contribution to the Osillator Strength =')
         oscillatorStrength = OSOverlapA*OSOverlapB*OSTransitionDipole
