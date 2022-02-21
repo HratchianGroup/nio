@@ -182,9 +182,12 @@ INCLUDE 'nio_mod.f03'
         call GMatrixFile1%getArray('Dipole Integrals',  &
           mqcVarOut=dipoleAOz,arraynum=3)
         if(DEBUG.or..TRUE.) then
-          call mqc_print(contraction(PMatrixTotal1,dipoleAOx),header='P(total).dipoleX')
-          call mqc_print(contraction(PMatrixTotal1,dipoleAOy),header='P(total).dipoleY')
-          call mqc_print(contraction(PMatrixTotal1,dipoleAOz),header='P(total).dipoleZ')
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOx),header='P1(total).dipoleX')
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOy),header='P1(total).dipoleY')
+          call mqc_print(contraction(PMatrixTotal1,dipoleAOz),header='P1(total).dipoleZ')
+          call mqc_print(contraction(PMatrixTotal2,dipoleAOx),header='P2(total).dipoleX')
+          call mqc_print(contraction(PMatrixTotal2,dipoleAOy),header='P2(total).dipoleY')
+          call mqc_print(contraction(PMatrixTotal2,dipoleAOz),header='P2(total).dipoleZ')
         endIf
         write(*,*)' iPlusOneAlpha  = ',iPlusOneAlpha
         write(*,*)' iMinusOneAlpha = ',iMinusOneAlpha
