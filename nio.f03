@@ -34,7 +34,6 @@ INCLUDE 'nio_mod.f03'
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
       logical::isNIO,isDDNO
-      logical::DEBUG=.false.
 !
 !     Format Statements
 !
@@ -228,8 +227,8 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
         call mqc_print(6,transitionDipole,header='Transition Dipole Moment')
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
-        call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
         if(DEBUG) then
+          call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
           dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
           call dipoleStrength%print(header='OLD Dipole Strength (au) =')
           dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
