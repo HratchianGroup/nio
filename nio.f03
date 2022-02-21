@@ -22,7 +22,8 @@ INCLUDE 'nio_mod.f03'
       character(len=512)::matrixFilename1,matrixFilename2
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
         GMatrixFile2,GMatrixFileOut
-      type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO
+      type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO,  &
+        oscillatorStrength,OSOverlapA,OSOverlapB,OSTransitionDipole
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
@@ -156,14 +157,14 @@ INCLUDE 'nio_mod.f03'
 !
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityAlphaEVals,diffDensityAlphaEVecs,CAlpha2,nElAlpha2,  &
-        nBasis,tmpMQCvar,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
+        nBasis,OSOverlapA,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
         iMinusOneAlpha)
-      call tmpMQCvar%print(header='determinant overlap for ALPHA')
+      call OSOverlapA%print(header='determinant overlap for ALPHA')
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityBetaEVals,diffDensityBetaEVecs,CBeta2,nElBeta2,  &
-        nBasis,tmpMQCvar,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
+        nBasis,OSOverlapB,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
         iMinusOneBeta)
-      call tmpMQCvar%print(header='determinant overlap for BETA ')
+      call OSOverlapB%print(header='determinant overlap for BETA ')
       isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
@@ -187,8 +188,6 @@ INCLUDE 'nio_mod.f03'
         endIf
         write(*,*)' iPlusOneAlpha  = ',iPlusOneAlpha
         write(*,*)' iMinusOneAlpha = ',iMinusOneAlpha
-
-
         if(iPlusOneAlpha.gt.0) then
           pDDNO = DDNOsAlpha%column(iPlusOneAlpha)
         elseIf(iPlusOneBeta.gt.0) then
@@ -208,11 +207,10 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
-        write(*,*)' transition dipole contribution to f = ',dot_product(transitionDipole,transitionDipole)
-
-        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOx,pDDNO)),header='h.dipoleX.p=')
-        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO)),header='h.dipoleY.p=')
-        call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOz,pDDNO)),header='h.dipoleZ.p=')
+        OSTransitionDipole = dot_product(transitionDipole,transitionDipole)
+        call OSTransitionDipole%print(header='Transition Dipole contribution to the Osillator Strength =')
+        oscillatorStrength = OSOverlapA*OSOverlapB*OSTransitionDipole
+        call oscillatorStrength%print(header='Oscillator Strength (au) =')
       endIf
 !
 !     Write results to the output Gaussian matrix file.
