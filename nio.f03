@@ -181,7 +181,7 @@ INCLUDE 'nio_mod.f03'
           mqcVarOut=dipoleAOy,arraynum=2)
         call GMatrixFile1%getArray('Dipole Integrals',  &
           mqcVarOut=dipoleAOz,arraynum=3)
-        if(DEBUG.or..TRUE.) then
+        if(DEBUG) then
           call mqc_print(contraction(PMatrixTotal1,dipoleAOx),header='P1(total).dipoleX')
           call mqc_print(contraction(PMatrixTotal1,dipoleAOy),header='P1(total).dipoleY')
           call mqc_print(contraction(PMatrixTotal1,dipoleAOz),header='P1(total).dipoleZ')
@@ -207,13 +207,13 @@ INCLUDE 'nio_mod.f03'
         endIf
         call pDDNO%print(header='particle DDNO')
         call hDDNO%print(header='hole DDNO')
-        if(DEBUG.or..TRUE.) then
+        if(DEBUG) then
           call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<p|p>')
           call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<h|h>')
           call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<h|p>')
           call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<p|h>')
         endIf
-        if(DEBUG.or..TRUE.) then
+        if(DEBUG) then
           tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,hDDNO)
           call tmpMQCvar%print(header='dipoleAOy.hDDNO')
           tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,pDDNO)
@@ -229,10 +229,15 @@ INCLUDE 'nio_mod.f03'
         call mqc_print(6,transitionDipole,header='Transition Dipole Moment')
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
         call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
-        dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
-        call dipoleStrength%print(header='OLD Dipole Strength (au) =')
-        dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
-        call dipoleStrength%print(header='NEW Dipole Strength (au) =')
+        if(DEBUG) then
+          dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
+          call dipoleStrength%print(header='OLD Dipole Strength (au) =')
+          dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
+          call dipoleStrength%print(header='NEW Dipole Strength (au) =')
+        else
+          dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
+          call dipoleStrength%print(header='Dipole Strength (au) =')
+        endIf
       endIf
 !
 !     Write results to the output Gaussian matrix file.
