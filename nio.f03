@@ -230,7 +230,9 @@ INCLUDE 'nio_mod.f03'
         OSTransitionDipole = dot_product(transitionDipole,transitionDipole)
         call OSTransitionDipole%print(header='Transition Dipole contribution to the Osillator Strength =')
         oscillatorStrength = OSOverlapA*OSOverlapB*OSTransitionDipole
-        call oscillatorStrength%print(header='Oscillator Strength (au) =')
+        call oscillatorStrength%print(header='OLD Oscillator Strength (au) =')
+        oscillatorStrength = OSOverlapA*OSOverlapA*OSOverlapB*OSOverlapB*OSTransitionDipole
+        call oscillatorStrength%print(header='NEW Oscillator Strength (au) =')
       endIf
 !
 !     Write results to the output Gaussian matrix file.
