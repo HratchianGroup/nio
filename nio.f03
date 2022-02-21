@@ -213,6 +213,16 @@ INCLUDE 'nio_mod.f03'
           call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<h|p>')
           call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<p|h>')
         endIf
+        if(DEBUG.or..TRUE.) then
+          tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,hDDNO)
+          call tmpMQCvar%print(header='dipoleAOy.hDDNO')
+          tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,pDDNO)
+          call tmpMQCvar%print(header='dipoleAOy.pDDNO')
+          tmpMQCvar = dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
+          call tmpMQCvar%print(header='same mu^y')
+          tmpMQCvar = dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO))
+          call tmpMQCvar%print(header='flipped mu^y')
+        endIf
         transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
