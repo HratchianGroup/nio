@@ -20,7 +20,8 @@ INCLUDE 'nio_mod.f03'
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne
       real(kind=real64),dimension(3)::transitionDipole
       character(len=512)::matrixFilename1,matrixFilename2
-      type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,GMatrixFile2
+      type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
+        GMatrixFile2,GMatrixFileOut
       type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
@@ -213,6 +214,14 @@ INCLUDE 'nio_mod.f03'
         call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO)),header='h.dipoleY.p=')
         call mqc_print(dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOz,pDDNO)),header='h.dipoleZ.p=')
       endIf
+!
+!     Write results to the output Gaussian matrix file.
+!
+      GMatrixFileOut = GMatrixFile1
+      call GMatrixFileOut%create('new.mat')
+      write(*,*)
+      write(*,*)' Hrant - filename = ',TRIM(GMatrixFileOut%filename)
+      call GMatrixFileOut%closeFile()
 !
   999 Continue
       write(iOut,8999)
