@@ -18,6 +18,7 @@
 !
       implicit none
       integer,parameter::IOut=6
+      logical::DEBUG=.false.
 !
 !
 !     Module Procedures
@@ -53,7 +54,6 @@
       real(kind=real64),dimension(:),allocatable::vector
       type(MQC_Variable)::TMatrix
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
-      logical::DEBUG=.false.
 !
 !
 !     Start by forming the V matrix, Eq. (7) from NIO polestrength JCP paper.
