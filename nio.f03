@@ -239,6 +239,30 @@ INCLUDE 'nio_mod.f03'
       call GMatrixFileOut%create('new.mat')
       write(*,*)
       write(*,*)' Hrant - filename = ',TRIM(GMatrixFileOut%filename)
+!
+!     Basis set info...
+      call GMatrixFile1%getArray('SHELL TO ATOM MAP',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('SHELL TO ATOM MAP',tmpMQCvar)
+      call GMatrixFile1%getArray('SHELL TYPES',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('SHELL TYPES',tmpMQCvar)
+      call GMatrixFile1%getArray('NUMBER OF PRIMITIVES PER SHELL',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('NUMBER OF PRIMITIVES PER SHELL',tmpMQCvar)
+      call GMatrixFile1%getArray('PRIMITIVE EXPONENTS',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('PRIMITIVE EXPONENTS',tmpMQCvar)
+      call GMatrixFile1%getArray('CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('CONTRACTION COEFFICIENTS',tmpMQCvar)
+      call GMatrixFile1%getArray('P(S=P) CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('P(S=P) CONTRACTION COEFFICIENTS',tmpMQCvar)
+      call GMatrixFile1%getArray('COORDINATES OF EACH SHELL',mqcVarOut=tmpMQCvar)
+      call GMatrixFileOut%writeArray2('COORDINATES OF EACH SHELL',tmpMQCvar)
+!
+!     DDNO eigenvectors and eigenvalues...
+      call GMatrixFileOut%writeArray2('ALPHA ORBITAL ENERGIES',diffDensityAlphaEVals)
+      call GMatrixFileOut%writeArray2('BETA ORBITAL ENERGIES',diffDensityBetaEVals)
+      call GMatrixFileOut%writeArray2('ALPHA MO COEFFICIENTS',DDNOsAlpha)
+      call GMatrixFileOut%writeArray2('BETA MO COEFFICIENTS',DDNOsBeta)
+!
+!     Close out the matrix file.
       call GMatrixFileOut%closeFile()
 !
   999 Continue
