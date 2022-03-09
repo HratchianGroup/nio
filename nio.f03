@@ -261,9 +261,13 @@ INCLUDE 'nio_mod.f03'
       write(*,*)' Hrant - Back from categorization routine!'
       write(*,*)
       write(*,*)
-      write(*,*)' Hrant - Calling projectDDNOs...'
+      write(*,*)' Hrant - Calling projectDDNOs for ALPHA spin...'
       call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,tmpMQCvar)
-
+      write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - Calling projectDDNOs for BETA spin...'
+      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,tmpMQCvar)
+      write(*,*)
       write(*,*)' Hrant - Back from calling projectDDNOs!'
       write(*,*)
       write(*,*)
