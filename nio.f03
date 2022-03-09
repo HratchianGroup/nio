@@ -24,6 +24,7 @@ INCLUDE 'nio_mod.f03'
         GMatrixFile2,GMatrixFileOut
       type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO,  &
         dipoleStrength,TDOverlapA,TDOverlapB,TDparticleHoleMag
+      type(MQC_Variable)::infoDDNOsAlpha,infoDDNOsBeta
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
@@ -89,6 +90,14 @@ INCLUDE 'nio_mod.f03'
       write(iOut,*)' Hrant - the unit number for the first  matrix file is: ',GMatrixFile1%UnitNumber
       write(iOut,*)' Hrant - the unit number for the second matrix file is: ',GMatrixFile2%UnitNumber
       write(iOut,*)
+
+
+!hph+
+!      tmpMQCvar = MQC_Gaussian_Unformatted_Matrix_Get_Value_Real(GMatrixFile1,'gaussian scalars')
+!hph-
+
+
+
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
@@ -238,6 +247,34 @@ INCLUDE 'nio_mod.f03'
           call dipoleStrength%print(header='Dipole Strength (au) =')
         endIf
       endIf
+
+
+
+
+
+!hph+
+      write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - Calling categorization routine...'
+      call categorizeDDNOs(diffDensityAlphaEVals,infoDDNOsAlpha)
+      call categorizeDDNOs(diffDensityBetaEVals,infoDDNOsBeta)
+      write(*,*)' Hrant - Back from categorization routine!'
+      write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - Calling projectDDNOs...'
+      call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,tmpMQCvar)
+
+      write(*,*)' Hrant - Back from calling projectDDNOs!'
+      write(*,*)
+      write(*,*)
+      
+!hph-
+
+
+
+
+
+
 !
 !     Write results to the output Gaussian matrix file.
 !

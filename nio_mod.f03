@@ -110,6 +110,130 @@
       end subroutine determinantOverlap
 
 !
+!PROCEDURE categorizeDDNOs
+      subroutine categorizeDDNOs(diffDensityEVals,infoDDNOs)
+!
+!     This routine analyzes a list of DDNOs to categorize DDNOs and, when
+!     appropriate, identify relaxation pairs and attachment/detachement pairs.
+!
+!
+!     - H. P. Hratchian, 2022
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_Variable),intent(in)::diffDensityEVals
+      type(MQC_Variable),intent(out)::infoDDNOs
+      integer(kind=int64)::i,j,nDDNOs,nNonNullDDNOs
+      integer(kind=int64),dimension(:,:),allocatable::myInfoDDNOs
+      real(kind=real64),dimension(:),allocatable::vector
+      logical::notNull
+!
+!
+!     Most of the work below is done using fortran intrinsic data types.
+!
+      nDDNOs = Size(diffDensityEVals)
+      Allocate(myInfoDDNOs(2,nDDNOs))
+      myInfoDDNOs = 0
+      nNonNullDDNOs = 0
+      vector = diffDensityEVals
+      do i = 1,nDDNOs
+        notNull = .False.
+        if(vector(i).ge.0.999) then
+          notNull = .True.
+          myInfoDDNOs(1,i) = 1
+        elseIf(vector(i).le.-0.999) then
+          notNull = .True.
+          myInfoDDNOs(1,i) = -1
+        elseIf(vector(i).ge.0.01) then
+          notNull = .True.
+          myInfoDDNOs(1,i) = 2
+        elseIf(vector(i).le.-0.01) then
+          notNull = .True.
+          myInfoDDNOs(1,i) = -2
+        endIf
+        if(notNull) then
+          nNonNullDDNOs = nNonNullDDNOs + 1
+          if(myInfoDDNOs(2,i).eq.0) then
+ jLoop1:    do j = 1,i-1
+              if(ABS(vector(i)+vector(j)).le.(100*MQC_small)) then
+                myInfoDDNOs(2,i) = j
+                myInfoDDNOs(2,j) = i
+                exit jLoop1
+              endIf
+            endDo jLoop1
+          endIf
+          if(myInfoDDNOs(2,i).eq.0) then
+ jLoop2:    do j = i+1,nDDNOs
+              if(ABS(vector(i)+vector(j)).le.(100*MQC_small)) then
+                myInfoDDNOs(2,i) = j
+                myInfoDDNOs(2,j) = i
+                exit jLoop2
+              endIf
+            endDo jLoop2
+          endIf
+        endIf
+      endDo
+      write(*,*)
+      write(*,*)' Hrant - nNonNullDDNOs = ',nNonNullDDNOs
+      call mqc_print(6,myInfoDDNOs,header='Here is DDNO info')
+      write(*,*)
+      write(*,*)
+!
+      deallocate(vector)
+!
+      return
+      end subroutine categorizeDDNOs
+
+!
+!PROCEDURE projectDDNOs
+      subroutine projectDDNOs(infoDDNOs,DDNOs,SMatrix,CMOs,nOcc)
+!
+!     This routine finds all relaxation DDNO pairs and rotates them into a new
+!     linear combination where one projects fully onto the initial state's
+!     occupied sub-space and one projects fully onto the initial state's virtual
+!     sub-space.
+!
+!
+!     - H. P. Hratchian, 2022
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_Variable),intent(in)::infoDDNOs,DDNOs,SMatrix,CMOs,nOcc
+      type(MQC_Variable)::tmp
+      real(kind=real64),dimension(:),allocatable::tmpVector1
+      real(kind=real64),dimension(:,:),allocatable::tmpMatrix,occVirtPops
+      integer(kind=int64)::no,i
+!
+!
+!     Determine the projection of DDNOs onto MOs.
+!
+      tmpMatrix = MatMul(TRANSPOSE(CMOs),MatMul(SMatrix,DDNOs))
+      call mqc_print(6,tmpMatrix,header='DDNOs projected into MO basis.')
+      no = 8
+      Allocate(tmpVector1(SIZE(DDNOs,1)))
+      Allocate(occVirtPops(3,SIZE(DDNOs,1)))
+      tmpVector1 = 0
+      occVirtPops = 0
+      do i = 1,SIZE(DDNOs,1)
+        tmpVector1 = 0
+        tmpVector1 = tmpMatrix(:no,i)
+        occVirtPops(1,i) = dot_product(tmpVector1,tmpVector1)
+        tmpVector1 = 0
+        tmpVector1 = tmpMatrix((no+1):,i)
+        occVirtPops(2,i) = dot_product(tmpVector1,tmpVector1)
+        tmpVector1 = tmpMatrix(:,i)
+        occVirtPops(3,i) = dot_product(tmpVector1,tmpVector1)
+      endDo
+      call mqc_print(6,occVirtPops,header='occ | virt | all pops...')
+!
+      return
+      end subroutine projectDDNOs
+
+!
 !
 !
       end module nio_mod
