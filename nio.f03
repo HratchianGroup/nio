@@ -17,7 +17,8 @@ INCLUDE 'nio_mod.f03'
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
-        iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne
+        iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
+        nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
       real(kind=real64),dimension(3)::transitionDipole
       character(len=512)::matrixFilename1,matrixFilename2
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
@@ -256,17 +257,22 @@ INCLUDE 'nio_mod.f03'
       write(*,*)
       write(*,*)
       write(*,*)' Hrant - Calling categorization routine...'
-      call categorizeDDNOs(diffDensityAlphaEVals,infoDDNOsAlpha)
-      call categorizeDDNOs(diffDensityBetaEVals,infoDDNOsBeta)
+      call categorizeDDNOs(diffDensityAlphaEVals,infoDDNOsAlpha,nRelaxationDDNOsAlpha)
+      call categorizeDDNOs(diffDensityBetaEVals,infoDDNOsBeta,nRelaxationDDNOsBeta)
       write(*,*)' Hrant - Back from categorization routine!'
       write(*,*)
       write(*,*)
       write(*,*)' Hrant - Calling projectDDNOs for ALPHA spin...'
-      call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,tmpMQCvar)
+      call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,  &
+        nElAlpha1,nRelaxationDDNOsAlpha,diffDensityAlpha)
       write(*,*)
+
+      goto 999
+
       write(*,*)
       write(*,*)' Hrant - Calling projectDDNOs for BETA spin...'
-      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,tmpMQCvar)
+      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,  &
+        nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
       write(*,*)
       write(*,*)' Hrant - Back from calling projectDDNOs!'
       write(*,*)
