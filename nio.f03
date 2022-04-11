@@ -35,7 +35,7 @@ INCLUDE 'nio_mod.f03'
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
-      logical::isNIO,isDDNO
+      logical::doTestCode=.False.,isNIO,isDDNO
 !
 !     Format Statements
 !
@@ -88,9 +88,6 @@ INCLUDE 'nio_mod.f03'
       nElBeta2  = GMatrixFile2%getVal('nBeta')
       write(IOut,1100) nAtoms,nBasis,nBasisUse,nEl1,nElAlpha1,nElBeta1,  &
         nEl2,nElAlpha2,nElBeta2
-      write(iOut,*)' Hrant - the unit number for the first  matrix file is: ',GMatrixFile1%UnitNumber
-      write(iOut,*)' Hrant - the unit number for the second matrix file is: ',GMatrixFile2%UnitNumber
-      write(iOut,*)
 
 
 !hph+
@@ -250,7 +247,7 @@ INCLUDE 'nio_mod.f03'
       endIf
 
 
-
+      if(.not.doTestCode) goto 999
 
 
 !hph+
