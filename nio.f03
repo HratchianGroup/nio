@@ -41,11 +41,11 @@ INCLUDE 'nio_mod.f03'
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO.')
- 1010 Format(3x,'Matrix File 1: ',A,/,  &
-             3x,'Matrix File 2: ',A,/)
- 1100 Format(1x,'nAtoms=',I4,3x,'nBasis=',I4,3x,'nBasisUse=',I4,/,  &
-        1x,'nEl1=',I4,3x,'nElAlpha1=',I4,3x,'nElBeta=',I4,/,  &
-        1x,'nEl2=',I4,3x,'nElAlpha2=',I4,3x,'nElBeta=',I4,/)
+ 1010 Format(1x,'Matrix File 1: ',A,/,  &
+             1x,'Matrix File 2: ',A,/)
+ 1100 Format(1x,'nAtoms=',I4,3x,'nBasis   =',I4,3x,'nBasisUse=',I4,/,  &
+             1x,'nEl1  =',I4,3x,'nElAlpha1=',I4,3x,'nElBeta  =',I4,/,  &
+             1x,'nEl2  =',I4,3x,'nElAlpha2=',I4,3x,'nElBeta  =',I4,/)
  1200 Format(1x,'Atomic Coordinates (Angstrom)')
  1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
  1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
@@ -55,9 +55,19 @@ INCLUDE 'nio_mod.f03'
         1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2,/,  &
         1x,'isNIO=',L1,3x,'isDDNO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
+ 9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 !
 !
       write(IOut,1000)
+      call mqc_version_print(iOut)
+!
+!     Do a check of the mqcPack version the program was built against to ensure
+!     it's a supported version.
+!
+      if(.not.mqc_version_check(isMajor=22,isMinor=4)) then
+        write(iOut,9000)
+        goto 999
+      endIf
 !
 !     Open the Gaussian matrix file and load the number of atomic centers.
 
@@ -210,8 +220,6 @@ INCLUDE 'nio_mod.f03'
           call mqc_print(contraction(PMatrixTotal2,dipoleAOy),header='P2(total).dipoleY')
           call mqc_print(contraction(PMatrixTotal2,dipoleAOz),header='P2(total).dipoleZ')
         endIf
-        write(*,*)' iPlusOneAlpha  = ',iPlusOneAlpha
-        write(*,*)' iMinusOneAlpha = ',iMinusOneAlpha
         if(iPlusOneAlpha.gt.0) then
           pDDNO = DDNOsAlpha%column(iPlusOneAlpha)
         elseIf(iPlusOneBeta.gt.0) then
