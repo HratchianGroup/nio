@@ -104,7 +104,6 @@
         call tmpMQCvar3%print(header='I-T(occ)(t).T(occ).delta')
       endIf
       detOverlap = tmpMQCvar3%det()
-      call detOverlap%print(header='detOverlap')
 !
       return
       end subroutine determinantOverlap

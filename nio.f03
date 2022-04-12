@@ -49,11 +49,13 @@ INCLUDE 'nio_mod.f03'
  1200 Format(1x,'Atomic Coordinates (Angstrom)')
  1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
  1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
- 1500 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
+ 1500 Format(/,1x,'NIO Polestrength = ',F9.6,/,  &
+        3x,'Alpha Polestrength = ',F9.6,3x,'Beta Polestrength = ',F9.6,/)
+ 1600 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
         3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6,/)
  2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
-        1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2,/,  &
-        1x,'isNIO=',L1,3x,'isDDNO=',L1)
+        1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2)
+ 2100 Format(/,1x,'isNIO=',L1,3x,'isDDNO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 !
@@ -178,18 +180,19 @@ INCLUDE 'nio_mod.f03'
         diffDensityAlphaEVals,diffDensityAlphaEVecs,CAlpha2,nElAlpha2,  &
         nBasis,TDOverlapA,nPlusOneAlpha,nMinusOneAlpha,iPlusOneAlpha,  &
         iMinusOneAlpha)
-      call TDOverlapA%print(header='determinant overlap for ALPHA')
       call determinantOverlap(SMatrixAO,SMatrixAOMinusHalf,  &
         diffDensityBetaEVals,diffDensityBetaEVecs,CBeta2,nElBeta2,  &
         nBasis,TDOverlapB,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
         iMinusOneBeta)
-      call TDOverlapB%print(header='determinant overlap for BETA ')
       isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
-        nMinusOneBeta,isNIO,isDDNO
+        nMinusOneBeta
+      write(iOut,2100) isNIO,isDDNO
+      if(isNIO) write(iOut,1500) float(TDOverlapA*TDOverlapB),  &
+        float(TDOverlapA),float(TDOverlapB)
 !
 !     If this is a DDNO job, calculate the overlap of the two determinants.
 !
@@ -200,7 +203,7 @@ INCLUDE 'nio_mod.f03'
         tmpMQCvar3 = tmpMQCvar1%det()
         tmpMQCvar4 = tmpMQCvar2%det()
         tmpMQCvar = tmpMQCvar3*tmpMQCvar4
-        write(iOut,1500) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
+        write(iOut,1600) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
       endIf
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
