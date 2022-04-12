@@ -88,7 +88,7 @@
         call TMatrix%print(header='TMatrix')
         call mqc_print(MatMul(Transpose(TMatrix),TMatrix),header='TMatrix(t).TMatrix')
       endIf
-      tmpMQCvar = MQC_Variable_SubMatrix(TMatrix,newrange1=[1,nOccKet])
+      tmpMQCvar = TMatrix%subMatrix(newrange1=[1,nOccKet])
 
 !hph+
       tmpMQCvar2 = vector

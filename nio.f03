@@ -34,7 +34,8 @@ INCLUDE 'nio_mod.f03'
         diffDensityBetaEVecs,diffDensityBetaEVals
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
-      type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
+      type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
+        tmpMQCvar4
       logical::doTestCode=.False.,isNIO,isDDNO
 !
 !     Format Statements
@@ -48,6 +49,8 @@ INCLUDE 'nio_mod.f03'
  1200 Format(1x,'Atomic Coordinates (Angstrom)')
  1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
  1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
+ 1500 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
+        3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6,/)
  2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
         1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2,/,  &
         1x,'isNIO=',L1,3x,'isDDNO=',L1)
@@ -177,6 +180,18 @@ INCLUDE 'nio_mod.f03'
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta,isNIO,isDDNO
+!
+!     If this is a DDNO job, calculate the overlap of the two determinants.
+!
+      if(isDDNO) then
+        tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+          MatMul(SMatrixAO,CAlpha2%subMatrix(newrange2=[1,nElAlpha2])))
+        tmpMQCvar2 = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,CBeta2))
+        tmpMQCvar3 = tmpMQCvar1%det()
+        tmpMQCvar4 = tmpMQCvar2%det()
+        tmpMQCvar = tmpMQCvar3*tmpMQCvar4
+        write(iOut,1500) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
+      endIf
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
