@@ -197,14 +197,30 @@ INCLUDE 'nio_mod.f03'
 !     If this is a DDNO job, calculate the overlap of the two determinants.
 !
       if(isDDNO) then
-        tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
-          MatMul(SMatrixAO,CAlpha2%subMatrix(newrange2=[1,nElAlpha2])))
-        tmpMQCvar2 = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,CBeta2))
-        tmpMQCvar3 = tmpMQCvar1%det()
-        tmpMQCvar4 = tmpMQCvar2%det()
+        if(nElAlpha1.ne.nElAlpha2) then
+          tmpMQCvar3 = 0.0
+        else
+          tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+            MatMul(SMatrixAO,CAlpha2%subMatrix(newrange2=[1,nElAlpha2])))
+          tmpMQCvar3 = tmpMQCvar1%det()
+        endIf
+        if(nElBeta1.ne.nElBeta2) then
+          tmpMQCvar4 = 0.0
+        else
+          tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
+            MatMul(SMatrixAO,CBeta2%subMatrix(newrange2=[1,nElBeta2])))
+          tmpMQCvar4 = tmpMQCvar2%det()
+        endIf
+!hph        tmpMQCvar2 = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,CBeta2))
         tmpMQCvar = tmpMQCvar3*tmpMQCvar4
         write(iOut,1600) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
       endIf
+!
+!     Carry out attachment/detachment density analysis.
+!
+
+
+
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
