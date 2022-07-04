@@ -20,6 +20,9 @@ INCLUDE 'nio_mod.f03'
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
         nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
       real(kind=real64),dimension(3)::transitionDipole
+      real(kind=real64),allocatable,dimension(:)::tmpVector
+      real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
+        tmpMatrix2,tmpMatrix3
       character(len=512)::matrixFilename1,matrixFilename2
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
         GMatrixFile2,GMatrixFileOut
@@ -31,7 +34,8 @@ INCLUDE 'nio_mod.f03'
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
-        diffDensityBetaEVecs,diffDensityBetaEVals
+        diffDensityBetaEVecs,diffDensityBetaEVals,attachmentDensity,  &
+        detachmentDensity
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
@@ -103,14 +107,6 @@ INCLUDE 'nio_mod.f03'
       nElBeta2  = GMatrixFile2%getVal('nBeta')
       write(IOut,1100) nAtoms,nBasis,nBasisUse,nEl1,nElAlpha1,nElBeta1,  &
         nEl2,nElAlpha2,nElBeta2
-
-
-!hph+
-!      tmpMQCvar = MQC_Gaussian_Unformatted_Matrix_Get_Value_Real(GMatrixFile1,'gaussian scalars')
-!hph-
-
-
-
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
@@ -218,9 +214,39 @@ INCLUDE 'nio_mod.f03'
 !
 !     Carry out attachment/detachment density analysis.
 !
-
-
-
+      Allocate(tmpMatrix2(nBasis,nBasis2),tmpMatrix3(nBasis,nBasis2))
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        tmpVector = DDNOsAlpha%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+        if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
+          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+        else
+          tmpMatrix3 = tmpMatrix3 + tmpMatrix1
+        endIf
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Promotion NUmber (detachment): ')
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        tmpVector = DDNOsBeta%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+        if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
+          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+        else
+          tmpMatrix3 = tmpMatrix3 + tmpMatrix1
+        endIf
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Promotion NUmber (detachment); ')
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
