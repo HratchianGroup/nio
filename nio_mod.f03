@@ -272,6 +272,41 @@
       endDo
       call mqc_print(6,occVirtPops,header='occ | virt | all pops...')
 !
+!     Try to project DDNOs into occ or virt sub-space based on which the DDNO
+!     already has majority overlap.
+!
+      Allocate(tmpMatrix2(SIZE(DDNOs,1),nRelaxationDDNOs))
+      nRelaxFound = 0
+      do i = 1,SIZE(DDNOs,2)
+        if(Abs(Int(MQC_Variable_get_MQC(infoDDNOs,[1,i]))).eq.2) then
+          nRelaxFound = nRelaxFound + 1
+          tmpVector1 = tmpMatrix(:,i)
+          if(occVirtPops(1,i).gt.occVirtPops(2,i)) then
+            tmpVector1(no+1:) = 0.0
+          else
+            tmpVector1(1:no) = 0.0
+          endIf
+          vectorNorm1 = dot_product(tmpVector1,tmpVector1)
+          if(abs(vectorNorm1).le.MQC_Small) then
+            vectorNorm1 = 0.0
+          else
+            vectorNorm1 = 1.0/sqrt(vectorNorm1)
+          endIf
+          tmpMatrix2(:,nRelaxFound) = vectorNorm1*tmpVector1
+          write(*,*)' Hrant - nRelaxFound,i = ',nRelaxFound,i
+        endIf
+      endDo
+      call mqc_print(6,tmpMatrix2,header='Here are the relaxation DDNOs projected onto Occ/Virt sub-spaces.')
+      call mqc_print(6,MatMul(TRANSPOSE(tmpMatrix2),tmpMatrix2),header='Relaxations DDNOs Occ/Virt Overlaps')
+
+
+      return
+      call mqc_error('hph-stop')
+
+
+
+
+!
 !     Build an overlap matrix of the NIOs with their occupied sub-spaces only.
 !
       call infoDDNOs%print(header='infoDDNOs')
@@ -281,7 +316,6 @@
       call mqc_dsyev_eigensystem_symmFull(tmpMatrix2,tmpVector1,tmpMatrix3)
       call mqc_print(6,tmpVector1,header='Occ DDNO E-Values')
       call mqc_print(6,tmpMatrix3,header='Occ DDNO E-Vectors')
-
       write(*,*)
       write(*,*)
       DeAllocate(tmpMatrix2)

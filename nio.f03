@@ -331,6 +331,11 @@ INCLUDE 'nio_mod.f03'
       call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,  &
         nElAlpha1,nRelaxationDDNOsAlpha,diffDensityAlpha)
       write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - Calling projectDDNOs for BETA  spin...'
+      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,  &
+        nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
+      write(*,*)
 
       goto 999
 
