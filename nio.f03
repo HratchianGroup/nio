@@ -250,7 +250,8 @@ INCLUDE 'nio_mod.f03'
 
 !hph+
 !
-!     Try promotion number a second time...
+!     Try promotion number a second time (Modified Promotion Number
+!     1)...alpha...
 !
 
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
@@ -297,6 +298,55 @@ INCLUDE 'nio_mod.f03'
       detachmentDensity = tmpMatrix3
       call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (attachment): ')
       call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (detachment): ')
+!
+!     Try promotion number a second time (Modified Promotion Number
+!     1)...beta...
+!
+
+      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+      tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+
+      write(*,*)
+      write(*,*)
+
+      call tmpMQCvar1%print(header='Beta  DDNOs Occ')
+      call tmpMQCvar2%print(header='Beta  DDNOs Virt')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMQCvar2 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
+      call tmpMQCvar2%print(header='Beta  DDNOs Occ  Again')
+
+      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
+      call tmpMQCvar2%print(header='Beta  DDNOs Virt Again')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
+          tmpVector = tmpMQCvar3%column(i)
+          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+        else
+          tmpVector = tmpMQCvar2%column(i)
+          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+        endIf
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Modified 1 Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Modified 1 Promotion Number (detachment): ')
 
       write(*,*)
       write(*,*)
