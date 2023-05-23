@@ -180,14 +180,14 @@ INCLUDE 'nio_mod.f03'
         diffDensityBetaEVals,diffDensityBetaEVecs,CBeta2,nElBeta2,  &
         nBasis,TDOverlapB,nPlusOneBeta,nMinusOneBeta,iPlusOneBeta,  &
         iMinusOneBeta)
-      isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
-        (nMinusOneAlpha+nMinusOneBeta).eq.1)
-      isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
-        (nMinusOneAlpha+nMinusOneBeta).eq.1.or.         &
-        (nMinusOneAlpha+nMinusOneBeta).eq.2)
+      isNIO  = (nPlusOneAlpha+nPlusOneBeta).lt.(nMinusOneAlpha+nMinusOneBeta)
+      isDDNO = (nPlusOneAlpha+nPlusOneBeta).eq.  &
+        (nMinusOneAlpha+nMinusOneBeta)
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta
       write(iOut,2100) isNIO,isDDNO
+      if(.not.(isNIO.xor.isDDNO))  &
+        call mqc_error('Confused about NIO or DDNO job.')
       if(isNIO) write(iOut,1500) float(TDOverlapA*TDOverlapB),  &
         float(TDOverlapA),float(TDOverlapB)
 !
