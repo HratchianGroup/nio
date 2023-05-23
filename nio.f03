@@ -70,7 +70,7 @@ INCLUDE 'nio_mod.f03'
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(isMajor=22,isMinor=4)) then
+      if(.not.mqc_version_check(isMajor=22,newerThanMinor=4)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -224,13 +224,13 @@ INCLUDE 'nio_mod.f03'
         if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
           tmpMatrix2 = tmpMatrix2 + tmpMatrix1
         else
-          tmpMatrix3 = tmpMatrix3 + tmpMatrix1
+          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
         endIf
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
       call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Promotion NUmber (detachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Promotion Number (detachment): ')
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -240,13 +240,122 @@ INCLUDE 'nio_mod.f03'
         if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
           tmpMatrix2 = tmpMatrix2 + tmpMatrix1
         else
-          tmpMatrix3 = tmpMatrix3 + tmpMatrix1
+          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
         endIf
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
       call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Promotion NUmber (detachment); ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Promotion Number (detachment); ')
+
+!hph+
+!
+!     Try promotion number a second time...
+!
+
+      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+      tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+
+      write(*,*)
+      write(*,*)
+
+      call tmpMQCvar1%print(header='Alpha DDNOs Occ')
+      call tmpMQCvar2%print(header='Alpha DDNOs Virt')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMQCvar2 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
+      call tmpMQCvar2%print(header='Alpha DDNOs Occ  Again')
+
+      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
+      call tmpMQCvar2%print(header='Alpha DDNOs Virt Again')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
+          tmpVector = tmpMQCvar3%column(i)
+          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+        else
+          tmpVector = tmpMQCvar2%column(i)
+          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+        endIf
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (detachment): ')
+
+      write(*,*)
+      write(*,*)
+
+!hph-
+
+!hph+
+!
+!     Try promotion number a third time...
+!
+
+      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+      tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+
+      write(*,*)
+      write(*,*)
+
+      call tmpMQCvar1%print(header='Alpha DDNOs Occ')
+      call tmpMQCvar2%print(header='Alpha DDNOs Virt')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
+      call tmpMQCvar3%print(header='Alpha DDNOs Occ  Again')
+
+      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsAlpha))
+      tmpMQCvar4 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
+      call tmpMQCvar4%print(header='Alpha DDNOs Virt Again')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        tmpVector = tmpMQCvar4%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!
+        tmpVector = tmpMQCvar3%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (detachment): ')
+
+      write(*,*)
+      write(*,*)
+
+!hph-
+
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
@@ -315,7 +424,8 @@ INCLUDE 'nio_mod.f03'
       endIf
 
 
-      if(.not.doTestCode) goto 999
+      write(*,*)' Test = ',.not.isDDNO.and..not.doTestCode
+      if(isNIO.or..not.doTestCode) goto 998
 
 
 !hph+
@@ -354,7 +464,7 @@ INCLUDE 'nio_mod.f03'
 
 
 
-
+  998 Continue
 !
 !     Write results to the output Gaussian matrix file.
 !
