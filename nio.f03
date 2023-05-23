@@ -355,7 +355,7 @@ INCLUDE 'nio_mod.f03'
 
 !hph+
 !
-!     Try promotion number a third time...
+!     Try promotion number a third time...alpha.
 !
 
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
@@ -400,6 +400,59 @@ INCLUDE 'nio_mod.f03'
       detachmentDensity = tmpMatrix3
       call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (attachment): ')
       call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (detachment): ')
+
+      write(*,*)
+      write(*,*)
+
+!hph-
+
+!hph+
+!
+!     Try promotion number a third time...beta.
+!
+
+      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+      tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+
+      write(*,*)
+      write(*,*)
+
+      call tmpMQCvar1%print(header='Beta  DDNOs Occ')
+      call tmpMQCvar2%print(header='Beta  DDNOs Virt')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
+      call tmpMQCvar3%print(header='Beta  DDNOs Occ  Again')
+
+      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+        MatMul(SMatrixAO,DDNOsBeta))
+      tmpMQCvar4 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
+      call tmpMQCvar4%print(header='Beta  DDNOs Virt Again')
+
+      write(*,*)
+      write(*,*)
+
+      tmpMatrix2 = float(0)
+      tmpMatrix3 = float(0)
+      do i = 1,nBasis
+        tmpVector = tmpMQCvar4%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!
+        tmpVector = tmpMQCvar3%column(i)
+        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+      endDo
+      attachmentDensity = tmpMatrix2
+      detachmentDensity = tmpMatrix3
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Modified 2 Promotion Number (attachment): ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Modified 2 Promotion Number (detachment): ')
 
       write(*,*)
       write(*,*)
