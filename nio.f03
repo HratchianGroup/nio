@@ -183,7 +183,8 @@ INCLUDE 'nio_mod.f03'
       isNIO  = ((nPlusOneAlpha+nPlusOneBeta).eq.0.and.  &
         (nMinusOneAlpha+nMinusOneBeta).eq.1)
       isDDNO = ((nPlusOneAlpha+nPlusOneBeta).eq.1.and.  &
-        (nMinusOneAlpha+nMinusOneBeta).eq.1)
+        (nMinusOneAlpha+nMinusOneBeta).eq.1.or.         &
+        (nMinusOneAlpha+nMinusOneBeta).eq.2)
       write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta
       write(iOut,2100) isNIO,isDDNO
