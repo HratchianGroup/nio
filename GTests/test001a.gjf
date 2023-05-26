@@ -1,5 +1,5 @@
 %chk=test001a
-#p test freq output=mat
+#p test uhf freq output=mat
 
 Test calculation for the NIO program on formaldehyde.
 
