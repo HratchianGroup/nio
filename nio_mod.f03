@@ -58,8 +58,6 @@
 !
 !     Start by forming the V matrix, Eq. (7) from NIO polestrength JCP paper.
 !
-
-!hph+
       iPlusOne = 0
       iMinusOne = 0
       nPlusOne = 0
@@ -79,8 +77,6 @@
           nMinusOne = nMinusOne + 1
         endIf
       endDo
-!hph-
-
       tmpMQCvar = MatMul(SMatrixMinusHalf,diffDensityEVecs)
       if(DEBUG) call tmpMQCvar%print(header='V')
       TMatrix = MatMul(Transpose(CMOsKet),MatMul(SMatrix,tmpMQCvar))
@@ -89,13 +85,8 @@
         call mqc_print(MatMul(Transpose(TMatrix),TMatrix),header='TMatrix(t).TMatrix')
       endIf
       tmpMQCvar = TMatrix%subMatrix(newrange1=[1,nOccKet])
-
-!hph+
       tmpMQCvar2 = vector
       tmpMQCvar1 = MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),tmpMQCvar2%diag())
-!      tmpMQCvar1 = MatMul(MatMul(Transpose(tmpMQCvar),tmpMQCvar),diffDensityEVals%diag())
-!hph-
-
       tmpMQCvar2 = MQC_Variable_UnitMatrix(nBasis)
       tmpMQCvar3 = tmpMQCvar2 - tmpMQCvar1
       if(DEBUG) then

@@ -13,12 +13,13 @@ INCLUDE 'nio_mod.f03'
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
         nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
+      integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
       real(kind=real64),dimension(3)::transitionDipole
       real(kind=real64),allocatable,dimension(:)::tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
@@ -63,7 +64,7 @@ INCLUDE 'nio_mod.f03'
         3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6,/)
  2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
         1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2)
- 2100 Format(/,1x,'isNIO=',L1,3x,'isDDNO=',L1)
+ 2100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 !
@@ -74,7 +75,7 @@ INCLUDE 'nio_mod.f03'
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(isMajor=22,newerThanMinor=4)) then
+      if(.not.mqc_version_check(newerThanMajor=22,newerThanMinor=4)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -170,16 +171,51 @@ INCLUDE 'nio_mod.f03'
 !
       diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
       diffDensityBeta  = PMatrixBeta2-PMatrixBeta1
-      call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='P(alpha).S')
-      call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
+      if(iPrint.ge.1.or.DEBUG) then
+        call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='P(alpha).S')
+        call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
+      endIf
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
+
+!hph+
+      if(.false.) then
+      write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - in sort testing section...'
+      tmpVector = diffDensityAlphaEVals
+      Allocate(tmpVectorInt(SIZE(tmpVector)))
+      tmpVectorInt = 0
+      call mqc_print(6,tmpVector,header='UnSorted tmpVector')
+      call sort(tmpVector(1:nElAlpha1),map=tmpVectorInt(1:nElAlpha1),  &
+        sortListIn=.true.,reverse=.true.)
+      call mqc_print(6,tmpVector,header='Sorted tmpVector')
+      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt')
+      write(*,*)
+      call sort(tmpVector(nElAlpha1+1:),map=tmpVectorInt(nElAlpha1+1:),  &
+        sortListIn=.true.,reverse=.true.)
+      call mqc_print(6,tmpVector,header='Sorted tmpVector')
+      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt')
+      write(*,*)
+      tmpVectorInt(nElAlpha1+1:) = tmpVectorInt(nElAlpha1+1:) + nElAlpha1
+      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt after shifting')
+      tmpMatrix1 = diffDensityAlphaEVecs
+      call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
+      diffDensityAlphaEVecs = tmpMatrix1
+      write(*,*)
+      write(*,*)
+      endIf
+!      goto 999
+!hph-
+
       DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
       DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
-      call diffDensityAlphaEVals%print(header='Alpha Occ Change EVals')
-      call diffDensityBetaEVals%print(header='Beta Occ Change EVals')
+      if(iPrint.ge.1.or.DEBUG) then
+        call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
+        call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
+      endIf
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
 !     excitation cases). At the end of this block, we decide if this is a
@@ -221,7 +257,6 @@ INCLUDE 'nio_mod.f03'
             MatMul(SMatrixAO,CBeta2%subMatrix(newrange2=[1,nElBeta2])))
           tmpMQCvar4 = tmpMQCvar2%det()
         endIf
-!hph        tmpMQCvar2 = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,CBeta2))
         tmpMQCvar = tmpMQCvar3*tmpMQCvar4
         write(iOut,1600) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
       endIf
@@ -243,8 +278,10 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Promotion Number (detachment): ')
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),  &
+        header='ATTACHMENT Alpha Promotion Number: ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),  &
+        header='DETACHMENT Alpha Promotion Number: ')
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -259,8 +296,14 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Promotion Number (detachment); ')
+      write(iOut,*)
+      call mqc_print(contraction(attachmentDensity,SMatrixAO),  &
+        header='ATTACHMENT Beta  Promotion Number: ')
+      call mqc_print(contraction(detachmentDensity,SMatrixAO),  &
+        header='DETACHMENT Beta  Promotion Number; ')
+
+!hph      goto 999
+
 
 !hph+
 !
@@ -578,14 +621,12 @@ INCLUDE 'nio_mod.f03'
 !hph-
 
   998 Continue
+
 !
 !     If requested, write results to an output Gaussian matrix file.
 !
       if(doMatrixFileOut) then
-        GMatrixFileOut = GMatrixFile1
-        call GMatrixFileOut%create('new.mat')
-        write(*,*)
-        write(*,*)' Hrant - filename = ',TRIM(GMatrixFileOut%filename)
+        call GMatrixFileOut%create(TRIM(matrixFilenameOut))
 !
 !       Basis set info...
         call GMatrixFile1%getArray('SHELL TO ATOM MAP',mqcVarOut=tmpMQCvar)
