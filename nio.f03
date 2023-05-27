@@ -23,7 +23,8 @@ INCLUDE 'nio_mod.f03'
       real(kind=real64),allocatable,dimension(:)::tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
         tmpMatrix2,tmpMatrix3
-      character(len=512)::matrixFilename1,matrixFilename2
+      character(len=512)::matrixFilename1,matrixFilename2,  &
+        matrixFilenameOut
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
         GMatrixFile2,GMatrixFileOut
       type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO,  &
@@ -40,13 +41,16 @@ INCLUDE 'nio_mod.f03'
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
         tmpMQCvar4
-      logical::doTestCode=.False.,isNIO,isDDNO
+      logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
 !
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO.')
- 1010 Format(1x,'Matrix File 1: ',A,/,  &
-             1x,'Matrix File 2: ',A,/)
+ 1010 Format(1x,'Matrix File 1:      ',A,/,  &
+             1x,'Matrix File 2:      ',A,/,  &
+             1x,'Output Matrix File: ',A,/)
+ 1020 Format(1x,'Matrix File 1:      ',A,/,  &
+             1x,'Matrix File 2:      ',A,/)
  1100 Format(1x,'nAtoms=',I4,3x,'nBasis   =',I4,3x,'nBasisUse=',I4,/,  &
              1x,'nEl1  =',I4,3x,'nElAlpha1=',I4,3x,'nElBeta  =',I4,/,  &
              1x,'nEl2  =',I4,3x,'nElAlpha2=',I4,3x,'nElBeta  =',I4,/)
@@ -78,13 +82,22 @@ INCLUDE 'nio_mod.f03'
 !     Open the Gaussian matrix file and load the number of atomic centers.
 
       nCommands = command_argument_count()
-      if(nCommands.ne.2)  &
+      if(nCommands.lt.2)  &
         call mqc_error('Two input Gaussian matrix files must be provided in the command line.')
       call get_command_argument(1,matrixFilename1)
       call get_command_argument(2,matrixFilename2)
       call GMatrixFile1%load(matrixFilename1)
       call GMatrixFile2%load(matrixFilename2)
-      write(IOut,1010) TRIM(matrixFilename1),TRIM(matrixFilename2)
+      if(nCommands.eq.3) then
+        call get_command_argument(3,matrixFilenameOut)
+        doMatrixFileOut = .true.
+      endIf
+      if(doMatrixFileOut) then
+        write(IOut,1010) TRIM(matrixFilename1),TRIM(matrixFilename2),  &
+          TRIM(matrixFilenameOut)
+      else
+        write(IOut,1020) TRIM(matrixFilename1),TRIM(matrixFilename2)
+      endIf
 !
 !     Do some consistency checks and load the number of atoms, basis functions,
 !     and linearly independent basis functions.
@@ -564,43 +577,41 @@ INCLUDE 'nio_mod.f03'
       
 !hph-
 
-
-
-
-
   998 Continue
 !
-!     Write results to the output Gaussian matrix file.
+!     If requested, write results to an output Gaussian matrix file.
 !
-      GMatrixFileOut = GMatrixFile1
-      call GMatrixFileOut%create('new.mat')
-      write(*,*)
-      write(*,*)' Hrant - filename = ',TRIM(GMatrixFileOut%filename)
+      if(doMatrixFileOut) then
+        GMatrixFileOut = GMatrixFile1
+        call GMatrixFileOut%create('new.mat')
+        write(*,*)
+        write(*,*)' Hrant - filename = ',TRIM(GMatrixFileOut%filename)
 !
-!     Basis set info...
-      call GMatrixFile1%getArray('SHELL TO ATOM MAP',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('SHELL TO ATOM MAP',tmpMQCvar)
-      call GMatrixFile1%getArray('SHELL TYPES',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('SHELL TYPES',tmpMQCvar)
-      call GMatrixFile1%getArray('NUMBER OF PRIMITIVES PER SHELL',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('NUMBER OF PRIMITIVES PER SHELL',tmpMQCvar)
-      call GMatrixFile1%getArray('PRIMITIVE EXPONENTS',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('PRIMITIVE EXPONENTS',tmpMQCvar)
-      call GMatrixFile1%getArray('CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('CONTRACTION COEFFICIENTS',tmpMQCvar)
-      call GMatrixFile1%getArray('P(S=P) CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('P(S=P) CONTRACTION COEFFICIENTS',tmpMQCvar)
-      call GMatrixFile1%getArray('COORDINATES OF EACH SHELL',mqcVarOut=tmpMQCvar)
-      call GMatrixFileOut%writeArray2('COORDINATES OF EACH SHELL',tmpMQCvar)
+!       Basis set info...
+        call GMatrixFile1%getArray('SHELL TO ATOM MAP',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('SHELL TO ATOM MAP',tmpMQCvar)
+        call GMatrixFile1%getArray('SHELL TYPES',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('SHELL TYPES',tmpMQCvar)
+        call GMatrixFile1%getArray('NUMBER OF PRIMITIVES PER SHELL',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('NUMBER OF PRIMITIVES PER SHELL',tmpMQCvar)
+        call GMatrixFile1%getArray('PRIMITIVE EXPONENTS',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('PRIMITIVE EXPONENTS',tmpMQCvar)
+        call GMatrixFile1%getArray('CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('CONTRACTION COEFFICIENTS',tmpMQCvar)
+        call GMatrixFile1%getArray('P(S=P) CONTRACTION COEFFICIENTS',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('P(S=P) CONTRACTION COEFFICIENTS',tmpMQCvar)
+        call GMatrixFile1%getArray('COORDINATES OF EACH SHELL',mqcVarOut=tmpMQCvar)
+        call GMatrixFileOut%writeArray2('COORDINATES OF EACH SHELL',tmpMQCvar)
 !
-!     DDNO eigenvectors and eigenvalues...
-      call GMatrixFileOut%writeArray2('ALPHA ORBITAL ENERGIES',diffDensityAlphaEVals)
-      call GMatrixFileOut%writeArray2('BETA ORBITAL ENERGIES',diffDensityBetaEVals)
-      call GMatrixFileOut%writeArray2('ALPHA MO COEFFICIENTS',DDNOsAlpha)
-      call GMatrixFileOut%writeArray2('BETA MO COEFFICIENTS',DDNOsBeta)
+!       DDNO eigenvectors and eigenvalues...
+        call GMatrixFileOut%writeArray2('ALPHA ORBITAL ENERGIES',diffDensityAlphaEVals)
+        call GMatrixFileOut%writeArray2('BETA ORBITAL ENERGIES',diffDensityBetaEVals)
+        call GMatrixFileOut%writeArray2('ALPHA MO COEFFICIENTS',DDNOsAlpha)
+        call GMatrixFileOut%writeArray2('BETA MO COEFFICIENTS',DDNOsBeta)
 !
-!     Close out the matrix file.
-      call GMatrixFileOut%closeFile()
+!       Close out the matrix file.
+        call GMatrixFileOut%closeFile()
+      endIf
 !
   999 Continue
       write(iOut,8999)
