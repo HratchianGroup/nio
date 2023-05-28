@@ -468,8 +468,10 @@ INCLUDE 'nio_mod.f03'
         else
           call mqc_error('No hole DDNO located.')
         endIf
-        call pDDNO%print(header='particle DDNO')
-        call hDDNO%print(header='hole DDNO')
+        if(iPrint.ge.1.or.DEBUG) then
+          call pDDNO%print(header='particle DDNO')
+          call hDDNO%print(header='hole DDNO')
+        endIf
         if(DEBUG) then
           call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<p|p>')
           call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<h|h>')
