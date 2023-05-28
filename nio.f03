@@ -552,6 +552,7 @@ INCLUDE 'nio_mod.f03'
 !     If requested, write results to an output Gaussian matrix file.
 !
       if(doMatrixFileOut) then
+        GMatrixFileOut = GMatrixFile1
         call GMatrixFileOut%create(TRIM(matrixFilenameOut))
 !
 !       Basis set info...
