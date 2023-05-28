@@ -37,7 +37,8 @@ INCLUDE 'nio_mod.f03'
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals,attachmentDensity,  &
-        detachmentDensity
+        detachmentDensity,attachmentNumberAlpha,detachmentNumberAlpha,  &
+        attachmentNumberBeta,detachmentNumberBeta
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
@@ -57,14 +58,21 @@ INCLUDE 'nio_mod.f03'
              1x,'nEl2  =',I4,3x,'nElAlpha2=',I4,3x,'nElBeta  =',I4,/)
  1200 Format(1x,'Atomic Coordinates (Angstrom)')
  1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
- 1300 Format(1x,'Nuclear Repulsion Energy = ',F20.6)
  1500 Format(/,1x,'NIO Polestrength = ',F9.6,/,  &
-        3x,'Alpha Polestrength = ',F9.6,3x,'Beta Polestrength = ',F9.6,/)
+        3x,'Alpha Polestrength = ',F9.6,3x,'Beta Polestrength = ',F9.6)
  1600 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
-        3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6,/)
- 2000 Format(/,1x,'nPlusOneAlpha=',I2,3x,'nMinusAlpha=',I2,/,  &
-        1x,'nPlusOneBeta =',I2,3x,'nMinusBeta =',I2)
- 2100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
+        3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6)
+ 2000 Format(/,1x,'Attachment/Detachment Density Analysis',A,/,  &
+        3x,'ALPHA: Attachement Number: ',F6.3,/,  &
+        10x,'Detachment  Number: ',F6.3,/,  &
+        3x,'BETA : Attachement Number: ',F6.3,/,  &
+        10x,'Detachment  Number: ',F6.3)
+ 3000 Format(1x,'DDNO/NIO Excitation/Detachment Number',/,  &
+        3x,'ALPHA: Attachment Number: ',I2,/,  &
+        10x,'Detachment Number: ',I2,/,  &
+        3x,'BETA : Attachment Number: ',I2,/,  &
+        10x,'Detachment Number: ',I2)
+ 3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 !
@@ -232,9 +240,9 @@ INCLUDE 'nio_mod.f03'
       isNIO  = (nPlusOneAlpha+nPlusOneBeta).lt.(nMinusOneAlpha+nMinusOneBeta)
       isDDNO = (nPlusOneAlpha+nPlusOneBeta).eq.  &
         (nMinusOneAlpha+nMinusOneBeta)
-      write(iOut,2000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
+      write(iOut,3000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta
-      write(iOut,2100) isNIO,isDDNO
+      if(iPrint.ge.1.or.DEBUG) write(iOut,3100) isNIO,isDDNO
       if(.not.(isNIO.xor.isDDNO))  &
         call mqc_error('Confused about NIO or DDNO job.')
       if(isNIO) write(iOut,1500) float(TDOverlapA*TDOverlapB),  &
@@ -278,10 +286,8 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),  &
-        header='ATTACHMENT Alpha Promotion Number: ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),  &
-        header='DETACHMENT Alpha Promotion Number: ')
+      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -296,46 +302,23 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      write(iOut,*)
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),  &
-        header='ATTACHMENT Beta  Promotion Number: ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),  &
-        header='DETACHMENT Beta  Promotion Number; ')
-
-!hph      goto 999
-
-
-!hph+
+      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
+      write(iOut,2000) ' (Original 1995 Model)',float(attachmentNumberAlpha),  &
+        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+        float(detachmentNumberBeta)
 !
-!     Try promotion number a second time (Modified Promotion Number
-!     1)...alpha...
+!     Try promotion number a second time (Modified Model A). Alpha...
 !
 
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
-
-      write(*,*)
-      write(*,*)
-
-      call tmpMQCvar1%print(header='Alpha DDNOs Occ')
-      call tmpMQCvar2%print(header='Alpha DDNOs Virt')
-
-      write(*,*)
-      write(*,*)
-
       tmpMQCvar2 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
-      call tmpMQCvar2%print(header='Alpha DDNOs Occ  Again')
-
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
-      call tmpMQCvar2%print(header='Alpha DDNOs Virt Again')
-
-      write(*,*)
-      write(*,*)
-
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -353,11 +336,10 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 1 Promotion Number (detachment): ')
+      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
 !
-!     Try promotion number a second time (Modified Promotion Number
-!     1)...beta...
+!     Promotion Number Model A...beta...
 !
 
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
@@ -365,25 +347,11 @@ INCLUDE 'nio_mod.f03'
       tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
 
-      write(*,*)
-      write(*,*)
-
-      call tmpMQCvar1%print(header='Beta  DDNOs Occ')
-      call tmpMQCvar2%print(header='Beta  DDNOs Virt')
-
-      write(*,*)
-      write(*,*)
-
       tmpMQCvar2 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
-      call tmpMQCvar2%print(header='Beta  DDNOs Occ  Again')
 
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
       tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
-      call tmpMQCvar2%print(header='Beta  DDNOs Virt Again')
-
-      write(*,*)
-      write(*,*)
 
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
@@ -402,15 +370,11 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Modified 1 Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Modified 1 Promotion Number (detachment): ')
-
-      write(*,*)
-      write(*,*)
-
-!hph-
-
-!hph+
+      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
+      write(iOut,2000) ' (Modified Model A)',float(attachmentNumberAlpha),  &
+        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+        float(detachmentNumberBeta)
 !
 !     Try promotion number a third time...alpha.
 !
@@ -419,27 +383,10 @@ INCLUDE 'nio_mod.f03'
         MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
-
-      write(*,*)
-      write(*,*)
-
-      call tmpMQCvar1%print(header='Alpha DDNOs Occ')
-      call tmpMQCvar2%print(header='Alpha DDNOs Virt')
-
-      write(*,*)
-      write(*,*)
-
       tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
-      call tmpMQCvar3%print(header='Alpha DDNOs Occ  Again')
-
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar4 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
-      call tmpMQCvar4%print(header='Alpha DDNOs Virt Again')
-
-      write(*,*)
-      write(*,*)
-
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -455,15 +402,8 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Alpha Modified 2 Promotion Number (detachment): ')
-
-      write(*,*)
-      write(*,*)
-
-!hph-
-
-!hph+
+      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
 !
 !     Try promotion number a third time...beta.
 !
@@ -472,27 +412,10 @@ INCLUDE 'nio_mod.f03'
         MatMul(SMatrixAO,DDNOsBeta))
       tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
-
-      write(*,*)
-      write(*,*)
-
-      call tmpMQCvar1%print(header='Beta  DDNOs Occ')
-      call tmpMQCvar2%print(header='Beta  DDNOs Virt')
-
-      write(*,*)
-      write(*,*)
-
       tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
-      call tmpMQCvar3%print(header='Beta  DDNOs Occ  Again')
-
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
       tmpMQCvar4 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
-      call tmpMQCvar4%print(header='Beta  DDNOs Virt Again')
-
-      write(*,*)
-      write(*,*)
-
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -508,14 +431,11 @@ INCLUDE 'nio_mod.f03'
       endDo
       attachmentDensity = tmpMatrix2
       detachmentDensity = tmpMatrix3
-      call mqc_print(contraction(attachmentDensity,SMatrixAO),header='Beta  Modified 2 Promotion Number (attachment): ')
-      call mqc_print(contraction(detachmentDensity,SMatrixAO),header='Beta  Modified 2 Promotion Number (detachment): ')
-
-      write(*,*)
-      write(*,*)
-
-!hph-
-
+      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
+      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
+      write(iOut,2000) ' (Modified Model B)',float(attachmentNumberAlpha),  &
+        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+        float(detachmentNumberBeta)
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
@@ -584,8 +504,12 @@ INCLUDE 'nio_mod.f03'
       endIf
 
 
-      write(*,*)' Test = ',.not.isDDNO.and..not.doTestCode
       if(isNIO.or..not.doTestCode) goto 998
+
+
+!hph+
+      goto 999
+!hph-
 
 
 !hph+
