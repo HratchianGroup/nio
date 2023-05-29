@@ -30,7 +30,8 @@ INCLUDE 'nio_mod.f03'
       type(mqc_gaussian_unformatted_matrix_file)::GMatrixFile1,  &
         GMatrixFile2,GMatrixFileOut
       type(MQC_Variable)::DDNOsAlpha,DDNOsBeta,pDDNO,hDDNO,  &
-        dipoleStrength,TDOverlapA,TDOverlapB,TDparticleHoleMag
+        dipoleStrength,TDOverlapA,TDOverlapB,TDparticleHoleMag,  &
+        oscillatorStrength
       type(MQC_Variable)::infoDDNOsAlpha,infoDDNOsBeta
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
@@ -512,6 +513,9 @@ INCLUDE 'nio_mod.f03'
           dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
           call dipoleStrength%print(header='Dipole Strength (au) =')
         endIf
+        oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
+        oscillatorStrength = oscillatorStrength*dipoleStrength
+        call oscillatorStrength%print(header='Oscillator Strength  =')
       endIf
 
 
