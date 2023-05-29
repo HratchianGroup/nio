@@ -60,7 +60,9 @@ INCLUDE 'nio_mod.f03'
  1200 Format(/,1x,'SCF Energies',/,  &
         3x,'SCF 1:     ',F15.8,' a.u.',/,  &
         3x,'SCF 2:     ',F15.8,' a.u.',/,  &
-        3x,'Delta-SCF: ',F15.8,' a.u.')
+        3x,'Delta-SCF: ',F15.8,' a.u.',2x,'=',2x,F15.8,' eV',/,  &
+        36x,'=',2x,F15.8,' cm^-1',/,  &
+        36x,'=',2x,F15.8,' nm')
  1500 Format(/,1x,'NIO Polestrength = ',F9.6,/,  &
         3x,'Alpha Polestrength = ',F9.6,3x,'Beta Polestrength = ',F9.6)
  1600 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
@@ -141,20 +143,9 @@ INCLUDE 'nio_mod.f03'
       scfEnergy1 = GMatrixFile1%getValReal('scfEnergy')
       scfEnergy2 = GMatrixFile2%getValReal('scfEnergy')
       deltaSCFEnergy = scfEnergy2-scfEnergy1
-      write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy
-      write(*,*)' Hrant - testing if integer gaussianScalars is allocated: ',  &
-        Allocated(GMatrixFile1%IgaussianScalars)
-      write(*,*)' Hrant - testing if real    gaussianScalars is allocated: ',  &
-        Allocated(GMatrixFile1%gaussianScalars)
-      call GMatrixFile1%getArray('GAUSSIAN SCALARS',mqcVarOut=tmpMQCvar)
-      call tmpMQCvar%print()
-      call GMatrixFile1%getArray('GAUSSIAN SCALARS',mqcVarOut=tmpMQCvar)
-      call tmpMQCvar%print()
-      write(*,*)
-      write(*,*)
-      goto 999
-!hph-
-
+      write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
+        deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
+        deltaSCFEnergy*evPHartree*nmPev
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
