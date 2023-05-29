@@ -20,6 +20,7 @@ INCLUDE 'nio_mod.f03'
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
         nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
       integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
+      real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy
       real(kind=real64),dimension(3)::transitionDipole
       real(kind=real64),allocatable,dimension(:)::tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
@@ -56,8 +57,10 @@ INCLUDE 'nio_mod.f03'
  1100 Format(1x,'nAtoms=',I4,3x,'nBasis   =',I4,3x,'nBasisUse=',I4,/,  &
              1x,'nEl1  =',I4,3x,'nElAlpha1=',I4,3x,'nElBeta  =',I4,/,  &
              1x,'nEl2  =',I4,3x,'nElAlpha2=',I4,3x,'nElBeta  =',I4,/)
- 1200 Format(1x,'Atomic Coordinates (Angstrom)')
- 1210 Format(3x,I3,2x,A2,5x,F7.4,3x,F7.4,3x,F7.4)
+ 1200 Format(/,1x,'SCF Energies',/,  &
+        3x,'SCF 1:     ',F15.8,' a.u.',/,  &
+        3x,'SCF 2:     ',F15.8,' a.u.',/,  &
+        3x,'Delta-SCF: ',F15.8,' a.u.')
  1500 Format(/,1x,'NIO Polestrength = ',F9.6,/,  &
         3x,'Alpha Polestrength = ',F9.6,3x,'Beta Polestrength = ',F9.6)
  1600 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
@@ -73,6 +76,7 @@ INCLUDE 'nio_mod.f03'
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
+ 7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 !
@@ -83,7 +87,8 @@ INCLUDE 'nio_mod.f03'
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=22,newerThanMinor=4)) then
+      if(.not.mqc_version_check(newerThanMajor=22,newerThanMinor=5,  &
+        newerThanRevision=3)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -129,6 +134,27 @@ INCLUDE 'nio_mod.f03'
       nElBeta2  = GMatrixFile2%getVal('nBeta')
       write(IOut,1100) nAtoms,nBasis,nBasisUse,nEl1,nElAlpha1,nElBeta1,  &
         nEl2,nElAlpha2,nElBeta2
+!
+!     Pull the energies from the two jobs and report the delta-E value in a few
+!     units.
+!
+      scfEnergy1 = GMatrixFile1%getValReal('scfEnergy')
+      scfEnergy2 = GMatrixFile2%getValReal('scfEnergy')
+      deltaSCFEnergy = scfEnergy2-scfEnergy1
+      write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy
+      write(*,*)' Hrant - testing if integer gaussianScalars is allocated: ',  &
+        Allocated(GMatrixFile1%IgaussianScalars)
+      write(*,*)' Hrant - testing if real    gaussianScalars is allocated: ',  &
+        Allocated(GMatrixFile1%gaussianScalars)
+      call GMatrixFile1%getArray('GAUSSIAN SCALARS',mqcVarOut=tmpMQCvar)
+      call tmpMQCvar%print()
+      call GMatrixFile1%getArray('GAUSSIAN SCALARS',mqcVarOut=tmpMQCvar)
+      call tmpMQCvar%print()
+      write(*,*)
+      write(*,*)
+      goto 999
+!hph-
+
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
@@ -185,45 +211,51 @@ INCLUDE 'nio_mod.f03'
       endIf
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
-
-!hph+
-      if(.false.) then
-      write(*,*)
-      write(*,*)
-      write(*,*)' Hrant - in sort testing section...'
-      tmpVector = diffDensityAlphaEVals
-      Allocate(tmpVectorInt(SIZE(tmpVector)))
-      tmpVectorInt = 0
-      call mqc_print(6,tmpVector,header='UnSorted tmpVector')
-      call sort(tmpVector(1:nElAlpha1),map=tmpVectorInt(1:nElAlpha1),  &
-        sortListIn=.true.,reverse=.true.)
-      call mqc_print(6,tmpVector,header='Sorted tmpVector')
-      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt')
-      write(*,*)
-      call sort(tmpVector(nElAlpha1+1:),map=tmpVectorInt(nElAlpha1+1:),  &
-        sortListIn=.true.,reverse=.true.)
-      call mqc_print(6,tmpVector,header='Sorted tmpVector')
-      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt')
-      write(*,*)
-      tmpVectorInt(nElAlpha1+1:) = tmpVectorInt(nElAlpha1+1:) + nElAlpha1
-      call mqc_print(6,tmpVectorInt,header='Sorted tmpVectorInt after shifting')
-      tmpMatrix1 = diffDensityAlphaEVecs
-      call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
-      diffDensityAlphaEVecs = tmpMatrix1
-      write(*,*)
-      write(*,*)
-      endIf
-!      goto 999
-!hph-
-
-      DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-      DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+
+!hph+
+!      DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
+!      DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+!hph-
+
       if(iPrint.ge.1.or.DEBUG) then
         call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
         call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
       endIf
+!
+!     Order the difference density eigenvalues and eigenvectors so that the
+!     largest change occupation pair are at the HOMO-LUMO gap.
+!
+!     First, take care of the alpha orbitals.
+      tmpVector = diffDensityAlphaEVals
+      Allocate(tmpVectorInt(SIZE(tmpVector)))
+      call sort(tmpVector(1:nElAlpha1),map=tmpVectorInt(1:nElAlpha1),  &
+        sortListIn=.true.,reverse=.true.)
+      call sort(tmpVector(nElAlpha1+1:),map=tmpVectorInt(nElAlpha1+1:),  &
+        sortListIn=.true.,reverse=.true.)
+      tmpVectorInt(nElAlpha1+1:) = tmpVectorInt(nElAlpha1+1:) + nElAlpha1
+      diffDensityAlphaEVals = tmpVector
+      tmpMatrix1 = diffDensityAlphaEVecs
+      call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
+      diffDensityAlphaEVecs = tmpMatrix1
+!
+!     Now, take care of the beta orbitals.
+      tmpVector = diffDensityBetaEVals
+      call sort(tmpVector(1:nElBeta1),map=tmpVectorInt(1:nElBeta1),  &
+        sortListIn=.true.,reverse=.true.)
+      call sort(tmpVector(nElBeta1+1:),map=tmpVectorInt(nElBeta1+1:),  &
+        sortListIn=.true.,reverse=.true.)
+      tmpVectorInt(nElBeta1+1:) = tmpVectorInt(nElBeta1+1:) + nElBeta1
+      diffDensityBetaEVals = tmpVector
+      tmpMatrix1 = diffDensityBetaEVecs
+      call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
+      diffDensityBetaEVecs = tmpMatrix1
+!
+!     Back transform the difference density natural orbitals to the AO basis.
+!
+      DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
+      DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
 !     excitation cases). At the end of this block, we decide if this is a
@@ -310,10 +342,7 @@ INCLUDE 'nio_mod.f03'
 !
 !     Try promotion number a second time (Modified Model A). Alpha...
 !
-
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar2 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
@@ -341,18 +370,12 @@ INCLUDE 'nio_mod.f03'
 !
 !     Promotion Number Model A...beta...
 !
-
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
         MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-
       tmpMQCvar2 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
-
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
       tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
-
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
       do i = 1,nBasis
@@ -381,8 +404,6 @@ INCLUDE 'nio_mod.f03'
 
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar2 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
       tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
       tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsAlpha))
@@ -407,10 +428,7 @@ INCLUDE 'nio_mod.f03'
 !
 !     Try promotion number a third time...beta.
 !
-
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar2 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
         MatMul(SMatrixAO,DDNOsBeta))
       tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
       tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
@@ -552,6 +570,7 @@ INCLUDE 'nio_mod.f03'
 !     If requested, write results to an output Gaussian matrix file.
 !
       if(doMatrixFileOut) then
+        write(iOut,7000) TRIM(matrixFilenameOut)
         GMatrixFileOut = GMatrixFile1
         call GMatrixFileOut%create(TRIM(matrixFilenameOut))
 !
