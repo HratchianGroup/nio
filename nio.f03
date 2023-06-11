@@ -150,7 +150,7 @@ INCLUDE 'nio_mod.f03'
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
-      call GMatrixFile1%getArray('OVERLAP',mqcVarOut=SMatrixAO)
+      SMatrixAO = getOverlapMatrix(GMatrixFile1)
       call SMatrixAO%eigen(SMatrixEVals,SMatrixEVecs)
       if(DEBUG) then
         call SMatrixAO%print(header='Overlap Matrix')
@@ -483,10 +483,10 @@ INCLUDE 'nio_mod.f03'
           call hDDNO%print(header='hole DDNO')
         endIf
         if(DEBUG) then
-          call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<p|p>')
-          call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<h|h>')
-          call mqc_print_scalar_real(6,float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),header='<h|p>')
-          call mqc_print_scalar_real(6,float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),header='<p|h>')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<p|p>')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<h|h>')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<h|p>')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<p|h>')
         endIf
         if(DEBUG) then
           tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,hDDNO)
@@ -501,7 +501,7 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
-        call mqc_print(6,transitionDipole,header='Transition Dipole Moment')
+        call mqc_print(transitionDipole,6,header='Transition Dipole Moment')
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
         if(DEBUG) then
           call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
