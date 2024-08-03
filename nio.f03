@@ -13,7 +13,7 @@ INCLUDE 'nio_mod.f03'
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint=0,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
@@ -198,19 +198,13 @@ INCLUDE 'nio_mod.f03'
       diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
       diffDensityBeta  = PMatrixBeta2-PMatrixBeta1
       if(iPrint.ge.1.or.DEBUG) then
-        call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='P(alpha).S')
-        call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='P(beta).S')
+        call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='DP(alpha).S = ')
+        call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='DP(beta).S  = ')
       endIf
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-
-!hph+
-!      DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
-!      DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
-!hph-
-
       if(iPrint.ge.1.or.DEBUG) then
         call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
         call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
