@@ -22,7 +22,8 @@ INCLUDE 'nio_mod.f03'
       integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
       real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy
       real(kind=real64),dimension(3)::transitionDipole
-      real(kind=real64),allocatable,dimension(:)::tmpVector
+      real(kind=real64),allocatable,dimension(:)::cart1,cart2,  &
+        tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
         tmpMatrix2,tmpMatrix3
       character(len=512)::matrixFilename1,matrixFilename2,  &
@@ -137,6 +138,19 @@ INCLUDE 'nio_mod.f03'
       nElBeta2  = GMatrixFile2%getVal('nBeta')
       write(IOut,1100) nAtoms,nBasis,nBasisUse,nEl1,nElAlpha1,nElBeta1,  &
         nEl2,nElAlpha2,nElBeta2
+!
+!     Another consistency check is to ensure the atomic coordinates are the same
+!     for the two FAFs.
+!
+      cart1 = GMatrixFile1%getAtomCarts()
+      cart2 = GMatrixFile2%getAtomCarts()
+      Allocate(tmpVector(3*nAtoms))
+      tmpVector = cart1-cart2
+      if(MaxVal(abs(tmpVector)).gt.0.0001) then
+        call mqc_print(tmpVector,iout=iOut,header='cart1 - cart2')
+        call mqc_error('Coordinates of the two matrix files must be the same.')
+      endIf
+      DeAllocate(tmpVector)
 !
 !     Pull the energies from the two jobs and report the delta-E value in a few
 !     units.
@@ -495,7 +509,7 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
         transitionDipole(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
-        call mqc_print(transitionDipole,6,header='Transition Dipole Moment')
+        call mqc_print(transitionDipole,6,header='Transition Dipole Moment',blank_at_top=.true.)
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
         if(DEBUG) then
           call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
