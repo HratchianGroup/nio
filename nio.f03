@@ -511,6 +511,7 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
         call mqc_print(transitionDipole,6,header='Transition Dipole Moment',blank_at_top=.true.)
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
+        call TDparticleHoleMag%print(header='TDparticleHoleMag = ')
         if(DEBUG) then
           call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
           dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
@@ -523,12 +524,11 @@ INCLUDE 'nio_mod.f03'
         endIf
         oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
         oscillatorStrength = oscillatorStrength*dipoleStrength
+        call dipoleStrength%print(header='dipoleStrength')
         call oscillatorStrength%print(header='Oscillator Strength  =')
       endIf
 
-
       if(isNIO.or..not.doTestCode) goto 998
-
 
 !hph+
       goto 999
