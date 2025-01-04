@@ -106,6 +106,16 @@ INCLUDE 'nio_mod.f03'
       call get_command_argument(2,matrixFilename2)
       call GMatrixFile1%load(matrixFilename1)
       call GMatrixFile2%load(matrixFilename2)
+
+!hph+
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)' Hrant - GMatrixFile1 Unit Number = ',GMatrixFile1%unitNumber
+      write(iOut,*)' Hrant - GMatrixFile2 Unit Number = ',GMatrixFile2%unitNumber
+      write(iOut,*)
+      write(iOut,*)
+!hph-
+
       if(nCommands.eq.3) then
         call get_command_argument(3,matrixFilenameOut)
         doMatrixFileOut = .true.
@@ -161,6 +171,10 @@ INCLUDE 'nio_mod.f03'
       write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
         deltaSCFEnergy*evPHartree*nmPev
+
+      write(iOut,*)' Hrant - zz'
+      goto 999
+
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
