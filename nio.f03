@@ -83,6 +83,11 @@ INCLUDE 'nio_mod.f03'
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
+
+!hph+
+      call mqc_gaussian_setDEBUG(.true.)
+!hph-
+
 !
 !
       write(IOut,1000)
