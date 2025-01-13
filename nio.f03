@@ -20,7 +20,7 @@ INCLUDE 'nio_mod.f03'
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
         nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
       integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
-      real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy
+      real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy,temp
       real(kind=real64),dimension(3)::transitionDipole
       real(kind=real64),allocatable,dimension(:)::cart1,cart2,  &
         tmpVector
@@ -79,6 +79,7 @@ INCLUDE 'nio_mod.f03'
         10x,'Detachment Number: ',I2,/,  &
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
+ 4000 Format(1x,'Relaxation Number: ',F9.6)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
@@ -185,20 +186,24 @@ INCLUDE 'nio_mod.f03'
 !     shell, so closed shell results are handled by copying the density matrix
 !     from restricted calculations into alpha and beta density matrix arrays.
 !
-      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+      call GMatrixFile1%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+      !call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
       if(GMatrixFile1%isUnrestricted()) then
-        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+        call GMatrixFile1%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+        !call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
         call GMatrixFile1%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta1)
       else
         PMatrixBeta1  = PMatrixAlpha1
         CBeta1 = CAlpha1
       endIf
       PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
-      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      call GMatrixFile2%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      !call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
       call GMatrixFile2%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha2)
       if(GMatrixFile2%isUnrestricted()) then
-        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+        call GMatrixFile2%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+        !call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
         call GMatrixFile2%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta2)
       else
         PMatrixBeta2  = PMatrixAlpha2
@@ -520,6 +525,9 @@ INCLUDE 'nio_mod.f03'
         else
           dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
           call dipoleStrength%print(header='Dipole Strength (au) =')
+          temp = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB
+          temp = float(1) - temp
+          write(iOut,4000) temp
         endIf
         oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
         oscillatorStrength = oscillatorStrength*dipoleStrength
