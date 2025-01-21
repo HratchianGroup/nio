@@ -1,4 +1,3 @@
-INCLUDE 'nio_mod.f03'
       program nio
 !
 !     This program carries out Natural Ionization Orbital analysis.
@@ -79,14 +78,14 @@ INCLUDE 'nio_mod.f03'
         10x,'Detachment Number: ',I2,/,  &
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
- 4000 Format(1x,'Relaxation Number: ',F9.6)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
+ 4000 Format(1x,'Relaxation Number: ',F9.6)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 
 !hph+
-      call mqc_gaussian_setDEBUG(.true.)
+      call mqc_gaussian_setDEBUG(.false.)
 !hph-
 
 !
@@ -112,16 +111,6 @@ INCLUDE 'nio_mod.f03'
       call get_command_argument(2,matrixFilename2)
       call GMatrixFile1%load(matrixFilename1)
       call GMatrixFile2%load(matrixFilename2)
-
-!hph+
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)' Hrant - GMatrixFile1 Unit Number = ',GMatrixFile1%unitNumber
-      write(iOut,*)' Hrant - GMatrixFile2 Unit Number = ',GMatrixFile2%unitNumber
-      write(iOut,*)
-      write(iOut,*)
-!hph-
-
       if(nCommands.eq.3) then
         call get_command_argument(3,matrixFilenameOut)
         doMatrixFileOut = .true.
@@ -177,10 +166,6 @@ INCLUDE 'nio_mod.f03'
       write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
         deltaSCFEnergy*evPHartree*nmPev
-
-      write(iOut,*)' Hrant - zz'
-      goto 999
-
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
@@ -205,24 +190,20 @@ INCLUDE 'nio_mod.f03'
 !     shell, so closed shell results are handled by copying the density matrix
 !     from restricted calculations into alpha and beta density matrix arrays.
 !
-      call GMatrixFile1%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
-      !call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
       if(GMatrixFile1%isUnrestricted()) then
-        call GMatrixFile1%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
-        !call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
         call GMatrixFile1%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta1)
       else
         PMatrixBeta1  = PMatrixAlpha1
         CBeta1 = CAlpha1
       endIf
       PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
-      call GMatrixFile2%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
-      !call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
       call GMatrixFile2%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha2)
       if(GMatrixFile2%isUnrestricted()) then
-        call GMatrixFile2%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
-        !call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
         call GMatrixFile2%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta2)
       else
         PMatrixBeta2  = PMatrixAlpha2
@@ -328,8 +309,13 @@ INCLUDE 'nio_mod.f03'
 !     Carry out attachment/detachment density analysis.
 !
       Allocate(tmpMatrix2(nBasis,nBasis2),tmpMatrix3(nBasis,nBasis2))
+#ifdef PGI
+      tmpMatrix2 = dfloat(0)
+      tmpMatrix3 = dfloat(0)
+#else
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
+#endif
       do i = 1,nBasis
         tmpVector = DDNOsAlpha%column(i)
         tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &

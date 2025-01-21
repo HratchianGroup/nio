@@ -72,7 +72,11 @@
       endDo
       do i = 1,nBasis
         if(vector(i).le.-0.999) then
+#ifdef PGI
+          vector(i) = dfloat(0)
+#else
           vector(i) = float(0)
+#endif
           iMinusOne = i
           nMinusOne = nMinusOne + 1
         endIf
