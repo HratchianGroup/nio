@@ -1,4 +1,3 @@
-INCLUDE 'nio_mod.f03'
       program nio
 !
 !     This program carries out Natural Ionization Orbital analysis.
@@ -79,7 +78,6 @@ INCLUDE 'nio_mod.f03'
         10x,'Detachment Number: ',I2,/,  &
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
- 4000 Format(1x,'Relaxation Number: ',F9.6)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
  4000 Format(1x,'Relaxation Number: ',F9.6)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
@@ -311,8 +309,13 @@ INCLUDE 'nio_mod.f03'
 !     Carry out attachment/detachment density analysis.
 !
       Allocate(tmpMatrix2(nBasis,nBasis2),tmpMatrix3(nBasis,nBasis2))
+#ifdef PGI
+      tmpMatrix2 = dfloat(0)
+      tmpMatrix3 = dfloat(0)
+#else
       tmpMatrix2 = float(0)
       tmpMatrix3 = float(0)
+#endif
       do i = 1,nBasis
         tmpVector = DDNOsAlpha%column(i)
         tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &

@@ -17,18 +17,18 @@ all: nio.exe
 #
 # Generic rules for building module (*.mod) and object (*.o) files.
 #
-%.mod: %.f03
-	$(RunF) $(LIBS) $(Prof) -I$(MQCMODS) -c $*.f03
+%.mod: %.F03
+	$(RunF) $(LIBS) $(Prof) -I$(MQCMODS) -c $*.F03
 
 %.o: %.f90
 	$(RunF) -I$(MQCMODS) -c $*.f90
 
-%.o: %.f03
-	$(RunF) $(F03Flags) -I$(MQCMODS) -c $*.f03
+%.o: %.F03
+	$(RunF) $(F03Flags) -I$(MQCMODS) -c $*.F03
 
 #
 # Generic rule for building general executable program (*.exe) from a standard
 # f03 source (*.f03) file.
 #
-%.exe: %.f03 %_mod.f03 $(MQCLIB)/libmqc.a
-	$(RunF) $(LIBS) $(Prof) -I$(MQCMODS) -o $*.exe $*.f03 $(MQCLIB)/libmqc.a
+%.exe: %.F03 %_mod.F03 %_mod.mod $(MQCLIB)/libmqc.a
+	$(RunF) $(LIBS) $(Prof) -I$(MQCMODS) -o $*.exe $*.F03 $*_mod.o $(MQCLIB)/libmqc.a
