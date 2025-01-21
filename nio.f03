@@ -192,24 +192,20 @@ INCLUDE 'nio_mod.f03'
 !     shell, so closed shell results are handled by copying the density matrix
 !     from restricted calculations into alpha and beta density matrix arrays.
 !
-      call GMatrixFile1%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
-      !call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
       if(GMatrixFile1%isUnrestricted()) then
-        call GMatrixFile1%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
-        !call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
         call GMatrixFile1%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta1)
       else
         PMatrixBeta1  = PMatrixAlpha1
         CBeta1 = CAlpha1
       endIf
       PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
-      call GMatrixFile2%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
-      !call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
       call GMatrixFile2%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha2)
       if(GMatrixFile2%isUnrestricted()) then
-        call GMatrixFile2%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
-        !call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
         call GMatrixFile2%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta2)
       else
         PMatrixBeta2  = PMatrixAlpha2
