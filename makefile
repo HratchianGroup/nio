@@ -6,7 +6,7 @@ MQCMODS      = $(MQCDir)/PGI/mod
 MQCLIB       = $(MQCDir)/PGI/lib
 LIBS         = -llapack -lblas -L$(MQCLIB)
 F03Flags     = 
-RunF         = pgfortran -i8 -r8 -Mallocatable=03
+RunF         = pgfortran -DPGI -i8 -r8 -Mallocatable=03
 #RunF         = pgfortran -i8 -r8
 #
 #

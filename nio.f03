@@ -81,12 +81,13 @@ INCLUDE 'nio_mod.f03'
         10x,'Detachment Number: ',I2)
  4000 Format(1x,'Relaxation Number: ',F9.6)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
+ 4000 Format(1x,'Relaxation Number: ',F9.6)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
 
 !hph+
-      call mqc_gaussian_setDEBUG(.true.)
+      call mqc_gaussian_setDEBUG(.false.)
 !hph-
 
 !
@@ -112,16 +113,6 @@ INCLUDE 'nio_mod.f03'
       call get_command_argument(2,matrixFilename2)
       call GMatrixFile1%load(matrixFilename1)
       call GMatrixFile2%load(matrixFilename2)
-
-!hph+
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)' Hrant - GMatrixFile1 Unit Number = ',GMatrixFile1%unitNumber
-      write(iOut,*)' Hrant - GMatrixFile2 Unit Number = ',GMatrixFile2%unitNumber
-      write(iOut,*)
-      write(iOut,*)
-!hph-
-
       if(nCommands.eq.3) then
         call get_command_argument(3,matrixFilenameOut)
         doMatrixFileOut = .true.
@@ -177,10 +168,6 @@ INCLUDE 'nio_mod.f03'
       write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
         deltaSCFEnergy*evPHartree*nmPev
-
-      write(iOut,*)' Hrant - zz'
-      goto 999
-
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !

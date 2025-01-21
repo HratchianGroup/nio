@@ -18,7 +18,7 @@
 !
       implicit none
       integer,parameter::IOut=6
-      logical::DEBUG=.true.
+      logical::DEBUG=.false.
 !
 !
 !     Module Procedures
@@ -65,7 +65,7 @@
       vector = diffDensityEVals
       do i = 1,nBasis
         if(vector(i).ge.0.999) then
-          vector(i) = float(0)
+          vector(i) = dfloat(0)
           iPlusOne = i
           nPlusOne = nPlusOne + 1
         endIf
