@@ -18,7 +18,7 @@
 !
       implicit none
       integer,parameter::IOut=6
-      logical::DEBUG=.false.
+      logical::DEBUG=.true.
 !
 !
 !     Module Procedures

@@ -84,6 +84,11 @@ INCLUDE 'nio_mod.f03'
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
+
+!hph+
+      call mqc_gaussian_setDEBUG(.true.)
+!hph-
+
 !
 !
       write(IOut,1000)
@@ -107,6 +112,16 @@ INCLUDE 'nio_mod.f03'
       call get_command_argument(2,matrixFilename2)
       call GMatrixFile1%load(matrixFilename1)
       call GMatrixFile2%load(matrixFilename2)
+
+!hph+
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)' Hrant - GMatrixFile1 Unit Number = ',GMatrixFile1%unitNumber
+      write(iOut,*)' Hrant - GMatrixFile2 Unit Number = ',GMatrixFile2%unitNumber
+      write(iOut,*)
+      write(iOut,*)
+!hph-
+
       if(nCommands.eq.3) then
         call get_command_argument(3,matrixFilenameOut)
         doMatrixFileOut = .true.
@@ -162,6 +177,10 @@ INCLUDE 'nio_mod.f03'
       write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
         deltaSCFEnergy*evPHartree*nmPev
+
+      write(iOut,*)' Hrant - zz'
+      goto 999
+
 !
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
@@ -516,6 +535,7 @@ INCLUDE 'nio_mod.f03'
         transitionDipole(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
         call mqc_print(transitionDipole,6,header='Transition Dipole Moment',blank_at_top=.true.)
         TDparticleHoleMag = dot_product(transitionDipole,transitionDipole)
+        call TDparticleHoleMag%print(header='TDparticleHoleMag = ')
         if(DEBUG) then
           call TDparticleHoleMag%print(header='Transition Dipole contribution to the Dipole Strength =')
           dipoleStrength = TDOverlapA*TDOverlapB*TDparticleHoleMag
@@ -531,12 +551,11 @@ INCLUDE 'nio_mod.f03'
         endIf
         oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
         oscillatorStrength = oscillatorStrength*dipoleStrength
+        call dipoleStrength%print(header='dipoleStrength')
         call oscillatorStrength%print(header='Oscillator Strength  =')
       endIf
 
-
       if(isNIO.or..not.doTestCode) goto 998
-
 
 !hph+
       goto 999

@@ -1,7 +1,7 @@
 %chk=test102a
 #p test uhf opt output=mat
 
-Formaldehyde ground state calc.
+H2 ground state calc.
 
 0 1
  H                  0.0 0.0 0.0
