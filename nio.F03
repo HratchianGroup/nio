@@ -44,7 +44,8 @@
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
-        tmpMQCvar4
+        tmpMQCvar4,POcc,PVirt,PDeltaMO,PDeltaOO,PDeltaVV,PDeltaOV,  &
+        PDeltaVO
       logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
 !
 !     Format Statements
@@ -83,11 +84,6 @@
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
-
-!hph+
-      call mqc_gaussian_setDEBUG(.false.)
-!hph-
-
 !
 !
       write(IOut,1000)
@@ -96,8 +92,8 @@
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=22,newerThanMinor=5,  &
-        newerThanRevision=3)) then
+      if(.not.mqc_version_check(newerThanMajor=24,newerThanMinor=0,  &
+        newerThanRevision=0)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -261,6 +257,72 @@
 !
       DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+
+!hph+
+!
+!     This block of code carries out various numerical tests of theory I've been
+!     working through.
+!
+      write(*,*)
+      write(*,*)
+      write(*,*)' Hrant - Tests...'
+      write(*,*)
+      call mqc_print(PMatrixAlpha1,iOut,header='P1_alpha')
+      call mqc_print(MatMul(PMatrixAlpha1,MatMul(SMatrixAO,PMatrixAlpha1)),iOut,header='P.S.P')
+      tmpMQCvar = MatMul(Transpose(CAlpha1),MatMul(PMatrixAlpha1,CAlpha1))
+      call mqc_print(tmpMQCvar,iOut,header='Ct.P.C')
+      tmpMQCvar = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,CAlpha1))
+      call mqc_print(tmpMQCvar,iOut,header='Ct.S.C')
+      tmpMQCvar = CAlpha1%subMatrix(newRange2=[1,nElAlpha1])
+      call mqc_print(CAlpha1,iOut,header='C')
+      call mqc_print(tmpMQCvar,iOut,header='C(occ)')
+      call mqc_print(MatMul(tmpMQCvar,Transpose(tmpMQCvar)),iOut,header='C(occ).C(occ)T')
+      call mqc_print(MatMul(Transpose(CAlpha1),CAlpha1),iOut,header='CT.C')
+
+
+
+
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,PMatrixAlpha1))
+      tmpMQCvar1 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call mqc_print(tmpMQCvar1,iOut,header='CT.S.P1ao.S.C')
+
+      POcc = tmpMQCvar1
+      call POcc%trimZero()
+      PVirt = MQC_Variable_UnitMatrix(Size(POcc,1))-POcc
+      call PVirt%trimZero()
+      call mqc_print(POcc,iOut,header='POcc')
+      call mqc_print(PVirt,iOut,header='PVirt')
+
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,PMatrixAlpha2))
+      tmpMQCvar2 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call mqc_print(tmpMQCvar2,iOut,header='CT.S.P2ao.S.C')
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,(PMatrixAlpha2-PMatrixAlpha1)))
+      PDeltaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call PDeltaMO%trimZero()
+      call mqc_print(PDeltaMO,iOut,header='CT.S.Delta.S.C')
+
+      PDeltaOO = MatMul(POcc,MatMul(PDeltaMO,POcc))
+      PDeltaVV = MatMul(PVirt,MatMul(PDeltaMO,PVirt))
+      PDeltaOV = MatMul(POcc,MatMul(PDeltaMO,PVirt))
+      PDeltaVO = MatMul(PVirt,MatMul(PDeltaMO,POcc))
+
+      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,POcc)),iOut,header='Delta_oo')
+      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_vv')
+
+      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_ov')
+      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,POcc)),iOut,header='Delta_vo')
+
+      write(iOut,*)
+      write(iOut,*)' Tr(Delta_oo) = ',PDeltaOO%trace()
+      write(iOut,*)' Tr(Delta_vv) = ',PDeltaVV%trace()
+      write(iOut,*)' Tr(Delta_ov) = ',PDeltaOV%trace()
+      write(iOut,*)' Tr(Delta_vo) = ',PDeltaVO%trace()
+
+      goto 999
+
+
+!hph-
+
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
 !     excitation cases). At the end of this block, we decide if this is a
