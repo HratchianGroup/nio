@@ -38,16 +38,20 @@
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
-        diffDensityBetaEVecs,diffDensityBetaEVals,attachmentDensity,  &
-        detachmentDensity,attachmentNumberAlpha,detachmentNumberAlpha,  &
-        attachmentNumberBeta,detachmentNumberBeta,XnTot,RnTot,XnOO,  &
-        XnOV,XnVO,XnVV,RnOO,RnOV,RnVO,RnVV
+        diffDensityBetaEVecs,diffDensityBetaEVals,diffDensityAlphaMO,  &
+        diffDensityBetaMO,diffDensityAlphaEVecsMO,  &
+        diffDensityBetaEVecsMO,attachmentDensity,detachmentDensity,  &
+        attachmentNumberAlpha,detachmentNumberAlpha,attachmentNumberBeta,  &
+        detachmentNumberBeta,XnTot,RnTot,XnOO,XnOV,XnVO,XnVV,RnOO,RnOV,  &
+        RnVO,RnVV
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
-        tmpMQCvar4,POccAlpha1,POccBeta1,PVirtAlpha1,PVirtBeta1,  &
-        PDeltaMO,PDeltaOO,PDeltaVV,PDeltaOV,PDeltaVO
+        tmpMQCvar4
       logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
+!hph
+      type(MQC_Variable)::POccAlpha1,POccBeta1,PVirtAlpha1,PVirtBeta1,  &
+        PDeltaMO,PDeltaOO,PDeltaVV,PDeltaOV,PDeltaVO
 !
 !     Format Statements
 !
@@ -280,6 +284,19 @@
         call mqc_print(POccBeta1,iOut,header='POccBeta1')
         call mqc_print(PVirtBeta1,iOut,header='PVirtBeta1')
       endIf
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,diffDensityAlpha))
+      diffDensityAlphaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call diffDensityAlphaMO%trimZero()
+      tmpMQCvar  = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,diffDensityBeta))
+      diffDensityBetaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CBeta1))
+      call diffDensityBetaMO%trimZero()
+
+!hph+
+!     Hrant -- Next, form the DDNOs in the MO basis. Once that's done, then I
+!     think we can carry on with the various analyses.
+!hph-
+
+
 
       goto 999
 
@@ -526,6 +543,9 @@
 
 
 !hph-
+
+
+
 
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
