@@ -45,8 +45,8 @@
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
-        tmpMQCvar4,POcc,PVirt,PDeltaMO,PDeltaOO,PDeltaVV,PDeltaOV,  &
-        PDeltaVO
+        tmpMQCvar4,POccAlpha1,POccBeta1,PVirtAlpha1,PVirtBeta1,  &
+        PDeltaMO,PDeltaOO,PDeltaVV,PDeltaOV,PDeltaVO
       logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
 !
 !     Format Statements
@@ -185,9 +185,10 @@
         call SMatrixAOMinusHalf%print(header='S**(-1/2)')
       endIf
 !
-!     Load the density matrices. The code below treats all systems as open
-!     shell, so closed shell results are handled by copying the density matrix
-!     from restricted calculations into alpha and beta density matrix arrays.
+!     Load the AO density and MO coefficient (in the AO basis) matrices. The
+!     code below treats all systems as open shell, so closed shell results are
+!     handled by copying the density matrix from restricted calculations into
+!     alpha and beta density matrix arrays.
 !
       call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
@@ -223,13 +224,9 @@
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-      if(iPrint.ge.1.or.DEBUG) then
-        call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
-        call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
-      endIf
 !
-!     Order the difference density eigenvalues and eigenvectors so that the
-!     largest change occupation pair are at the HOMO-LUMO gap.
+!     Order the AO difference density eigenvectors and eigenvalues so that the
+!     largest change occupation pair is at the HOMO-LUMO gap.
 !
 !     First, take care of the alpha orbitals.
       tmpVector = diffDensityAlphaEVals
@@ -255,11 +252,52 @@
       tmpMatrix1 = diffDensityBetaEVecs
       call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
       diffDensityBetaEVecs = tmpMatrix1
+      if(iPrint.ge.1.or.DEBUG) then
+        call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
+        call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
+      endIf
 !
 !     Back transform the difference density natural orbitals to the AO basis.
 !
       DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+!
+!     Form the POcc, PVirt, difference densities, and DDNOs in the initial state MO basis.
+!
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,PMatrixAlpha1))
+      POccAlpha1 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call POccAlpha1%trimZero()
+      PVirtAlpha1 = MQC_Variable_UnitMatrix(Size(POccAlpha1,1))-POccAlpha1
+      call PVirtAlpha1%trimZero()
+      tmpMQCvar  = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,PMatrixBeta1))
+      POccBeta1 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CBeta1))
+      call POccBeta1%trimZero()
+      PVirtBeta1 = MQC_Variable_UnitMatrix(Size(POccBeta1,1))-POccBeta1
+      call PVirtBeta1%trimZero()
+      if(DEBUG.or..True.) then
+        call mqc_print(POccAlpha1,iOut,header='POccAlpha1')
+        call mqc_print(PVirtAlpha1,iOut,header='PVirtAlpha1')
+        call mqc_print(POccBeta1,iOut,header='POccBeta1')
+        call mqc_print(PVirtBeta1,iOut,header='PVirtBeta1')
+      endIf
+
+      goto 999
+
+
+
+
+
+!hph+
+!      POcc = tmpMQCvar1
+!      call POcc%trimZero()
+!      PVirt = MQC_Variable_UnitMatrix(Size(POcc,1))-POcc
+!      call PVirt%trimZero()
+!      call mqc_print(POcc,iOut,header='POcc')
+!      call mqc_print(PVirt,iOut,header='PVirt')
+!hph-
+
+
+
 
 !hph+
 !
@@ -289,12 +327,12 @@
       tmpMQCvar1 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
       call mqc_print(tmpMQCvar1,iOut,header='CT.S.P1ao.S.C')
 
-      POcc = tmpMQCvar1
-      call POcc%trimZero()
-      PVirt = MQC_Variable_UnitMatrix(Size(POcc,1))-POcc
-      call PVirt%trimZero()
-      call mqc_print(POcc,iOut,header='POcc')
-      call mqc_print(PVirt,iOut,header='PVirt')
+!      POcc = tmpMQCvar1
+!      call POcc%trimZero()
+!      PVirt = MQC_Variable_UnitMatrix(Size(POcc,1))-POcc
+!      call PVirt%trimZero()
+!      call mqc_print(POcc,iOut,header='POcc')
+!      call mqc_print(PVirt,iOut,header='PVirt')
 
       tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,PMatrixAlpha2))
       tmpMQCvar2 = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
@@ -305,183 +343,184 @@
       call mqc_print(PDeltaMO,iOut,header='CT.S.Delta.S.C')
 
 
+!hph+
+!!
+!!     Build the excitation matrix and the relaxation matrix in the MO basis.
+!!
+!      call PDeltaMO%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
+!      call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values MO Basis')
+!      if(Allocated(tmpMatrix1)) deAllocate(tmpMatrix1)
+!      if(Allocated(tmpMatrix2)) deAllocate(tmpMatrix2)
+!      if(Allocated(tmpMatrix3)) deAllocate(tmpMatrix3)
+!      Allocate(tmpMatrix1(nBasis,nBasis),tmpMatrix2(nBasis,nBasis),  &
+!        tmpMatrix3(nBasis,nBasis))
+!#ifdef PGI
+!      tmpMatrix1 = dfloat(0)
+!      tmpMatrix2 = dfloat(0)
+!#else
+!      tmpMatrix1 = float(0)
+!      tmpMatrix2 = float(0)
+!#endif
+!      do i = 1,nBasis
+!        if(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
+!          (1.0-MQC_small)) then
+!          write(iOut,*)' i = ',i
+!          write(iOut,*)'    eVal = ',float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))
+!          write(iOut,*)
+!          tmpVector = diffDensityAlphaEVecs%column(i)
+!          tmpMatrix1 = tmpMatrix1 +  &
+!            mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!        elseIf(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
+!          MQC_small) then
+!          tmpVector = diffDensityAlphaEVecs%column(i)
+!          tmpMatrix2 = tmpMatrix2 +  &
+!            mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!        endIf
+!      endDo
+!      XnTot = tmpMatrix1
+!      RnTot = tmpMatrix2
+!      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+!      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+!      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+!      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+!      if(DEBUG) then
+!        call XnOO%print(header='XnOO')
+!        call XnOV%print(header='XnOV')
+!        call XnVO%print(header='XnVO')
+!        call XnVV%print(header='XnVV')
+!      endIf
+!      write(iOut,*)
+!      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+!      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+!      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+!      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+!      write(iOut,*)
+!      write(iOut,*)
+!      write(iOut,*)
+!      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+!      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+!      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+!      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+!      if(DEBUG) then
+!        call RnOO%print(header='RnOO')
+!        call RnOV%print(header='RnOV')
+!        call RnVO%print(header='RnVO')
+!        call RnVV%print(header='RnVV')
+!      endIf
+!      write(iOut,*)
+!      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+!      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+!      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+!      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+!      write(iOut,*)
+!      write(iOut,*)
+!      write(iOut,*)
 !
-!     Build the excitation matrix and the relaxation matrix in the MO basis.
 !
-      call PDeltaMO%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
-      call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values MO Basis')
-      if(Allocated(tmpMatrix1)) deAllocate(tmpMatrix1)
-      if(Allocated(tmpMatrix2)) deAllocate(tmpMatrix2)
-      if(Allocated(tmpMatrix3)) deAllocate(tmpMatrix3)
-      Allocate(tmpMatrix1(nBasis,nBasis),tmpMatrix2(nBasis,nBasis),  &
-        tmpMatrix3(nBasis,nBasis))
-#ifdef PGI
-      tmpMatrix1 = dfloat(0)
-      tmpMatrix2 = dfloat(0)
-#else
-      tmpMatrix1 = float(0)
-      tmpMatrix2 = float(0)
-#endif
-      do i = 1,nBasis
-        if(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
-          (1.0-MQC_small)) then
-          write(iOut,*)' i = ',i
-          write(iOut,*)'    eVal = ',float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))
-          write(iOut,*)
-          tmpVector = diffDensityAlphaEVecs%column(i)
-          tmpMatrix1 = tmpMatrix1 +  &
-            mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-        elseIf(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
-          MQC_small) then
-          tmpVector = diffDensityAlphaEVecs%column(i)
-          tmpMatrix2 = tmpMatrix2 +  &
-            mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-        endIf
-      endDo
-      XnTot = tmpMatrix1
-      RnTot = tmpMatrix2
-      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
-      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
-      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
-      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
-      if(DEBUG) then
-        call XnOO%print(header='XnOO')
-        call XnOV%print(header='XnOV')
-        call XnVO%print(header='XnVO')
-        call XnVV%print(header='XnVV')
-      endIf
-      write(iOut,*)
-      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
-      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
-      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
-      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)
-      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
-      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
-      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
-      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
-      if(DEBUG) then
-        call RnOO%print(header='RnOO')
-        call RnOV%print(header='RnOV')
-        call RnVO%print(header='RnVO')
-        call RnVV%print(header='RnVV')
-      endIf
-      write(iOut,*)
-      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
-      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
-      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
-      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)
-
-
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)' Hrant - TRY AGAIN...'
-      write(iOut,*)
-      write(iOut,*)' ALPHA'
-      write(iOut,*)
-
-
-      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
-        diffDensityAlphaEVals,'relaxation')
-      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
-      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
-      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
-      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
-      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
-      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
-      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
-      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
-      write(iOut,*)
-
-
-      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
-        diffDensityAlphaEVals,'excitation')
-      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
-      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
-      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
-      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
-      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
-      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
-      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
-      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
-      write(iOut,*)
-
-      write(iOut,*)
-      write(iOut,*)' BETA'
-      write(iOut,*)
-
-
-      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
-        diffDensityAlphaEVals,'relaxation')
-      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
-      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
-      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
-      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
-      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
-      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
-      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
-      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
-      write(iOut,*)
-
-
-      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
-        diffDensityAlphaEVals,'excitation')
-      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
-      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
-      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
-      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
-      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
-      write(iOut,*)
-      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
-      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
-      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
-      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
-      write(iOut,*)
-
-
-      goto 999
-
-
-
-
-      PDeltaOO = MatMul(POcc,MatMul(PDeltaMO,POcc))
-      PDeltaVV = MatMul(PVirt,MatMul(PDeltaMO,PVirt))
-      PDeltaOV = MatMul(POcc,MatMul(PDeltaMO,PVirt))
-      PDeltaVO = MatMul(PVirt,MatMul(PDeltaMO,POcc))
-
-      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,POcc)),iOut,header='Delta_oo')
-      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_vv')
-
-      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_ov')
-      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,POcc)),iOut,header='Delta_vo')
-
-      write(iOut,*)
-      write(iOut,*)' Tr(Delta_oo) = ',PDeltaOO%trace()
-      write(iOut,*)' Tr(Delta_vv) = ',PDeltaVV%trace()
-      write(iOut,*)' Tr(Delta_ov) = ',PDeltaOV%trace()
-      write(iOut,*)' Tr(Delta_vo) = ',PDeltaVO%trace()
-      write(iOut,*)
-      write(iOut,*)
-      write(iOut,*)' Back to the original NIO program.'
-      write(iOut,*)
-      write(iOut,*)
+!      write(iOut,*)
+!      write(iOut,*)
+!      write(iOut,*)' Hrant - TRY AGAIN...'
+!      write(iOut,*)
+!      write(iOut,*)' ALPHA'
+!      write(iOut,*)
+!
+!
+!      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+!        diffDensityAlphaEVals,'relaxation')
+!      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+!      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+!      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+!      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+!      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+!      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+!      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+!      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+!      write(iOut,*)
+!
+!
+!      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+!        diffDensityAlphaEVals,'excitation')
+!      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+!      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+!      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+!      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+!      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+!      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+!      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+!      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+!      write(iOut,*)
+!
+!      write(iOut,*)
+!      write(iOut,*)' BETA'
+!      write(iOut,*)
+!
+!
+!      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+!        diffDensityAlphaEVals,'relaxation')
+!      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+!      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+!      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+!      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+!      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+!      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+!      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+!      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+!      write(iOut,*)
+!
+!
+!      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+!        diffDensityAlphaEVals,'excitation')
+!      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+!      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+!      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+!      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+!      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+!      write(iOut,*)
+!      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+!      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+!      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+!      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+!      write(iOut,*)
+!
+!
+!      goto 999
+!
+!
+!
+!
+!      PDeltaOO = MatMul(POcc,MatMul(PDeltaMO,POcc))
+!      PDeltaVV = MatMul(PVirt,MatMul(PDeltaMO,PVirt))
+!      PDeltaOV = MatMul(POcc,MatMul(PDeltaMO,PVirt))
+!      PDeltaVO = MatMul(PVirt,MatMul(PDeltaMO,POcc))
+!
+!      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,POcc)),iOut,header='Delta_oo')
+!      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_vv')
+!
+!      call mqc_print(MatMul(POcc,MatMul(PDeltaMO,PVirt)),iOut,header='Delta_ov')
+!      call mqc_print(MatMul(PVirt,MatMul(PDeltaMO,POcc)),iOut,header='Delta_vo')
+!
+!      write(iOut,*)
+!      write(iOut,*)' Tr(Delta_oo) = ',PDeltaOO%trace()
+!      write(iOut,*)' Tr(Delta_vv) = ',PDeltaVV%trace()
+!      write(iOut,*)' Tr(Delta_ov) = ',PDeltaOV%trace()
+!      write(iOut,*)' Tr(Delta_vo) = ',PDeltaVO%trace()
+!      write(iOut,*)
+!      write(iOut,*)
+!      write(iOut,*)' Back to the original NIO program.'
+!      write(iOut,*)
+!      write(iOut,*)
 
 !hph      goto 999
 
