@@ -12,7 +12,7 @@
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint=0,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint=1,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
@@ -40,7 +40,8 @@
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals,attachmentDensity,  &
         detachmentDensity,attachmentNumberAlpha,detachmentNumberAlpha,  &
-        attachmentNumberBeta,detachmentNumberBeta
+        attachmentNumberBeta,detachmentNumberBeta,XnTot,RnTot,XnOO,  &
+        XnOV,XnVO,XnVV,RnOO,RnOV,RnVO,RnVV
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
@@ -80,7 +81,9 @@
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
- 4000 Format(1x,'Relaxation Number: ',F9.6)
+ 4000 Format(/,1x,'Relaxation Number: ',F9.6)
+ 4010 Format(4x,'Alpha Contribution: ',F9.6,  &
+        /,4x,'Beta Contribution: ',F9.6,/,/)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
@@ -301,6 +304,163 @@
       call PDeltaMO%trimZero()
       call mqc_print(PDeltaMO,iOut,header='CT.S.Delta.S.C')
 
+
+!
+!     Build the excitation matrix and the relaxation matrix in the MO basis.
+!
+      call PDeltaMO%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
+      call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values MO Basis')
+      if(Allocated(tmpMatrix1)) deAllocate(tmpMatrix1)
+      if(Allocated(tmpMatrix2)) deAllocate(tmpMatrix2)
+      if(Allocated(tmpMatrix3)) deAllocate(tmpMatrix3)
+      Allocate(tmpMatrix1(nBasis,nBasis),tmpMatrix2(nBasis,nBasis),  &
+        tmpMatrix3(nBasis,nBasis))
+#ifdef PGI
+      tmpMatrix1 = dfloat(0)
+      tmpMatrix2 = dfloat(0)
+#else
+      tmpMatrix1 = float(0)
+      tmpMatrix2 = float(0)
+#endif
+      do i = 1,nBasis
+        if(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
+          (1.0-MQC_small)) then
+          write(iOut,*)' i = ',i
+          write(iOut,*)'    eVal = ',float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))
+          write(iOut,*)
+          tmpVector = diffDensityAlphaEVecs%column(i)
+          tmpMatrix1 = tmpMatrix1 +  &
+            mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+        elseIf(abs(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i]))).gt.  &
+          MQC_small) then
+          tmpVector = diffDensityAlphaEVecs%column(i)
+          tmpMatrix2 = tmpMatrix2 +  &
+            mqc_outerProduct_real(tmpVector,tmpVector,  &
+            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+        endIf
+      endDo
+      XnTot = tmpMatrix1
+      RnTot = tmpMatrix2
+      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+      if(DEBUG) then
+        call XnOO%print(header='XnOO')
+        call XnOV%print(header='XnOV')
+        call XnVO%print(header='XnVO')
+        call XnVV%print(header='XnVV')
+      endIf
+      write(iOut,*)
+      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)
+      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+      if(DEBUG) then
+        call RnOO%print(header='RnOO')
+        call RnOV%print(header='RnOV')
+        call RnVO%print(header='RnVO')
+        call RnVV%print(header='RnVV')
+      endIf
+      write(iOut,*)
+      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)
+
+
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)' Hrant - TRY AGAIN...'
+      write(iOut,*)
+      write(iOut,*)' ALPHA'
+      write(iOut,*)
+
+
+      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+        diffDensityAlphaEVals,'relaxation')
+      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+      write(iOut,*)
+
+
+      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+        diffDensityAlphaEVals,'excitation')
+      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+      write(iOut,*)
+
+      write(iOut,*)
+      write(iOut,*)' BETA'
+      write(iOut,*)
+
+
+      RnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+        diffDensityAlphaEVals,'relaxation')
+      RnOO = MatMul(POcc,MatMul(RnTot,POcc))
+      RnOV = MatMul(POcc,MatMul(RnTot,PVirt))
+      RnVO = MatMul(PVirt,MatMul(RnTot,POcc))
+      RnVV = MatMul(PVirt,MatMul(RnTot,PVirt))
+      write(iOut,*)' Tr(RnTot)= ',RnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(RnOO) = ',RnOO%trace()
+      write(iOut,*)' Tr(RnOV) = ',RnOV%trace()
+      write(iOut,*)' Tr(RnVO) = ',RnVO%trace()
+      write(iOut,*)' Tr(RnVV) = ',RnVV%trace()
+      write(iOut,*)
+
+
+      XnTot = partitionDensityMatrix(diffDensityAlphaEVecs,  &
+        diffDensityAlphaEVals,'excitation')
+      XnOO = MatMul(POcc,MatMul(XnTot,POcc))
+      XnOV = MatMul(POcc,MatMul(XnTot,PVirt))
+      XnVO = MatMul(PVirt,MatMul(XnTot,POcc))
+      XnVV = MatMul(PVirt,MatMul(XnTot,PVirt))
+      write(iOut,*)' Tr(XnTot)= ',XnTot%trace()
+      write(iOut,*)
+      write(iOut,*)' Tr(XnOO) = ',XnOO%trace()
+      write(iOut,*)' Tr(XnOV) = ',XnOV%trace()
+      write(iOut,*)' Tr(XnVO) = ',XnVO%trace()
+      write(iOut,*)' Tr(XnVV) = ',XnVV%trace()
+      write(iOut,*)
+
+
+      goto 999
+
+
+
+
       PDeltaOO = MatMul(POcc,MatMul(PDeltaMO,POcc))
       PDeltaVV = MatMul(PVirt,MatMul(PDeltaMO,PVirt))
       PDeltaOV = MatMul(POcc,MatMul(PDeltaMO,PVirt))
@@ -317,8 +477,13 @@
       write(iOut,*)' Tr(Delta_vv) = ',PDeltaVV%trace()
       write(iOut,*)' Tr(Delta_ov) = ',PDeltaOV%trace()
       write(iOut,*)' Tr(Delta_vo) = ',PDeltaVO%trace()
+      write(iOut,*)
+      write(iOut,*)
+      write(iOut,*)' Back to the original NIO program.'
+      write(iOut,*)
+      write(iOut,*)
 
-      goto 999
+!hph      goto 999
 
 
 !hph-
@@ -593,10 +758,11 @@
         else
           dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
           call dipoleStrength%print(header='Dipole Strength (au) =')
-          temp = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB
-          temp = float(1) - temp
-          write(iOut,4000) temp
         endIf
+        temp = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB
+        temp = float(1) - temp
+        write(iOut,4000) temp
+        write(iOut,4010) float(TDOverlapA*TDOverlapA),float(TDOverlapB*TDOverlapB)
         oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
         oscillatorStrength = oscillatorStrength*dipoleStrength
         call dipoleStrength%print(header='dipoleStrength')

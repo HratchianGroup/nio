@@ -251,6 +251,68 @@
       return
       end function getOverlapMatrix
 
+
+      function partitionDensityMatrix(eigenvectors,eigenvalues,model) result(densityOut)
+!
+!     This function partitions a density matrix according to the model described
+!     by input dummy argument <model>. It is assumed that the density matrix
+!     eigenvectors/NOs are in an orthogonormal basis.
+!
+!
+!     H. P. Hratchian, 2025
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_variable),intent(in)::eigenvectors,eigenvalues
+      character(len=*),intent(in)::model
+      type(MQC_variable)::densityOut
+      character(len=64)::myModel
+      integer(kind=int64)::i,nBasis
+      real(kind=real64),dimension(:),allocatable::tmpVector
+      real(kind=real64),dimension(:,:),allocatable::tmpMatrix
+!
+!
+!     Based on the value of <model>, form <densityOut>.
+!
+      nBasis = Size(eigenvalues)
+      allocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
+#ifdef PGI
+      tmpMatrix = dfloat(0)
+#else
+      tmpMatrix = float(0)
+#endif
+      call string_change_case(model,'U',myModel)
+      select case(TRIM(myModel))
+      case('RELAXATION')
+        do i = 1,nBasis
+          if(abs(float(MQC_Variable_get_MQC(eigenvalues,[i]))).lt.  &
+            (1.0-MQC_small-MQC_small)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case('EXCITATION')
+        do i = 1,nBasis
+          if(abs(float(MQC_Variable_get_MQC(eigenvalues,[i]))).gt.  &
+            (1.0-MQC_small-MQC_small)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case default
+        call mqc_error('partitionDensityMatrix: Unknown model type sent.')
+      end select
+      densityOut = tmpMatrix
+!
+      deAllocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
+      return
+      end function partitionDensityMatrix
 !
 !
 !
