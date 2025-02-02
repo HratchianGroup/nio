@@ -353,7 +353,7 @@
 !
       implicit none
       type(MQC_variable),intent(in)::XIn,density
-      real(kind=real64),optional::traceXoo,traceXov,traceXvo,traceXvv
+      type(MQC_variable),optional::traceXoo,traceXov,traceXvo,traceXvv
       type(MQC_variable),optional::Xoo,Xov,Xvo,Xvv
       type(MQC_variable)::densityVirt,XTemp
 !

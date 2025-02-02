@@ -666,6 +666,26 @@
 !      write(iOut,*)
 
 
+!
+!     Evaluation the excitation number.
+!
+      call MO_partition(diffDensityAlphaMO,PMatrixAlpha1MO,  &
+        traceXvv=attachmentNumberAlpha)
+      call MO_partition(diffDensityAlphaMO,PMatrixAlpha1MO,  &
+        traceXoo=detachmentNumberAlpha)
+      call MO_partition(diffDensityBetaMO,PMatrixBeta1MO,  &
+        traceXvv=attachmentNumberBeta)
+      call MO_partition(diffDensityBetaMO,PMatrixBeta1MO,  &
+        traceXoo=detachmentNumberBeta)
+      write(iOut,2000) ' (Excitation Number Model)',  &
+        'Barca, Gilbert, and Gill, J. Chem. Theory Comput. 14, 9-13 (2018).',  &
+        float(attachmentNumberAlpha),  &
+        -float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+        -float(detachmentNumberBeta)
+
+
+
+
 !hph+
       goto 999
 !hph-
