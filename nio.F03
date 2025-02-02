@@ -39,11 +39,11 @@
         PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals,diffDensityAlphaMO,  &
-        diffDensityBetaMO,diffDensityAlphaEVecsMO,  &
-        diffDensityBetaEVecsMO,attachmentDensity,detachmentDensity,  &
-        attachmentNumberAlpha,detachmentNumberAlpha,attachmentNumberBeta,  &
-        detachmentNumberBeta,XnTot,RnTot,XnOO,XnOV,XnVO,XnVV,RnOO,RnOV,  &
-        RnVO,RnVV
+        diffDensityBetaMO,diffDensityAlphaEVecsMO,diffDensityAlphaEValsMO,  &
+        diffDensityBetaEVecsMO,diffDensityBetaEValsMO,attachmentDensity,  &
+        detachmentDensity,attachmentNumberAlpha,detachmentNumberAlpha,  &
+        attachmentNumberBeta,detachmentNumberBeta,XnTot,RnTot,XnOO,XnOV,  &
+        XnVO,XnVV,RnOO,RnOV,RnVO,RnVV
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
@@ -290,6 +290,10 @@
       tmpMQCvar  = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,diffDensityBeta))
       diffDensityBetaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CBeta1))
       call diffDensityBetaMO%trimZero()
+      call diffDensityAlphaMO%eigen(diffDensityAlphaEValsMO,  &
+        diffDensityAlphaEVecsMO)
+      call diffDensityBetaMO%eigen(diffDensityBetaEValsMO,  &
+        diffDensityBetaEVecsMO)
 
 !hph+
 !     Hrant -- Next, form the DDNOs in the MO basis. Once that's done, then I

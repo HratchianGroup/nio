@@ -313,6 +313,61 @@
       deAllocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
       return
       end function partitionDensityMatrix
+
+
+      subroutine MO_partition(XIn,density,traceXoo,traceXov,traceXvo,  &
+        traceXvv,Xoo,Xov,Xvo,Xvv)
+!
+!     This routine partitions the matrix <XIn> into MO blocks. It is assumed
+!     that XIn and Density are sent in the MO basis.
+!
+!     Output dummy arguments <traceXoo>, <traceXov>, <traceXvo>, <traceXvv>,
+!     <Xoo>, <Xov>, <Xvo>, and <Xvv> are all optional. All of these output
+!     arguments are MQC_variable objects.
+!
+!     Note that <traceXov> and <traceXvo> are always zero, but they are included
+!     in the argument list for completion.
+!
+!     H. P. Hratchian, 2025
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_variable),intent(in)::XIn,density
+      real(kind=real64),optional::traceXoo,traceXov,traceXvo,traceXvv
+      type(MQC_variable),optional::Xoo,Xov,Xvo,Xvv
+      type(MQC_variable)::densityVirt,XTemp
+!
+!
+!     Figure out if we need to build 1-<density> for projections in the virtual
+!     block on either the bra or ket index.
+!
+      if(Present(traceXvv).or.Present(Xov).or.Present(Xvo).or.Present(Xvv))  &
+        densityVirt = MQC_Variable_UnitMatrix(Size(density,1))-density
+!
+!     Evaluate whichever output dummy arguments the calling program unit sent.
+!
+      if(Present(traceXoo).or.Present(Xoo)) then
+        XTemp = MatMul(density,MatMul(XIn,density))
+        if(Present(traceXoo)) traceXoo = XTemp%trace()
+        if(Present(Xoo)) Xoo = XTemp
+      endIf
+!
+      if(Present(traceXov)) traceXov = 0.0
+      if(Present(Xov)) Xov = MatMul(density,MatMul(XIn,densityVirt))
+!
+      if(Present(traceXvo)) traceXvo = 0.0
+      if(Present(Xvo)) Xvo = MatMul(densityVirt,MatMul(XIn,density))
+!
+      if(Present(traceXvv).or.Present(Xvv)) then
+        XTemp = MatMul(densityVirt,MatMul(XIn,densityVirt))
+        if(Present(traceXvv)) traceXvv = XTemp%trace()
+        if(Present(Xvv)) Xvv = XTemp
+      endIf
+!
+      return
+      end subroutine MO_partition
 !
 !
 !
