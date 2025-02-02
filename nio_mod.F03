@@ -285,6 +285,24 @@
 #endif
       call string_change_case(model,'U',myModel)
       select case(TRIM(myModel))
+      case('ATTACHMENT')
+        do i = 1,nBasis
+          if(float(MQC_Variable_get_MQC(eigenvalues,[i])).ge.float(0)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case('DETACHMENT')
+        do i = 1,nBasis
+          if(float(MQC_Variable_get_MQC(eigenvalues,[i])).lt.float(0)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix -  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
       case('RELAXATION')
         do i = 1,nBasis
           if(abs(float(MQC_Variable_get_MQC(eigenvalues,[i]))).lt.  &
