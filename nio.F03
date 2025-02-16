@@ -114,7 +114,7 @@
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=24,newerThanMinor=0,  &
+      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=2,  &
         newerThanRevision=0)) then
         write(iOut,9000)
         goto 999
@@ -247,9 +247,11 @@
       endIf
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,  &
         SMatrixAOHalf))
+      if(DEBUG) call tmpMQCvar%print(iOut,header='alpha S^{1/2}PS^{1/2}')
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
       tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,  &
         SMatrixAOHalf))
+      if(DEBUG) call tmpMQCvar%print(iOut,header='beta  S^{1/2}PS^{1/2}')
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
 !
 !     Order the AO difference density eigenvectors and eigenvalues so that the
