@@ -51,6 +51,7 @@
         iMinusOne
 !
       integer(kind=int64)::i
+      real(kind=real64)::overlapTest
       real(kind=real64),dimension(:),allocatable::vector
       type(MQC_Variable)::TMatrix
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
@@ -63,6 +64,25 @@
       nPlusOne = 0
       nMinusOne = 0
       vector = diffDensityEVals
+
+!hph+
+!
+!     This block of code forms the overlap as a product of the corresponding
+!     orbital overlaps I would get if I use Ortiz's relationship between those
+!     and the difference density eigenvalues.
+!
+      overlapTest = 1.0
+      do i = 1,nBasis
+        overlapTest = overlapTest*(1.0-vector(i)**2)
+      endDo
+      write(iOut,*)' Hrant - overlap test 1: ',overlapTest
+      overlapTest = 1.0
+      do i = 1,nBasis
+        overlapTest = overlapTest*sqrt(abs((1.0-vector(i)**2)))
+      endDo
+      write(iOut,*)' Hrant - overlap test 2: ',overlapTest
+!hph-
+
       do i = 1,nBasis
         if(vector(i).ge.0.999) then
           vector(i) = dfloat(0)
