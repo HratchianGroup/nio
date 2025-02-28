@@ -12,7 +12,7 @@
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint=0,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint=1,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
@@ -36,16 +36,27 @@
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
-        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,diffDensityAlpha,  &
+        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,PMatrixAlpha1MO,  &
+        PMatrixBeta1MO,PMatrixAlpha2MO,PMatrixBeta2MO,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
-        diffDensityBetaEVecs,diffDensityBetaEVals,attachmentDensity,  &
+        diffDensityBetaEVecs,diffDensityBetaEVals,diffDensityAlphaMO,  &
+        diffDensityBetaMO,diffDensityAlphaEVecsMO,diffDensityAlphaEValsMO,  &
+        diffDensityBetaEVecsMO,diffDensityBetaEValsMO,attachmentDensity,  &
         detachmentDensity,attachmentNumberAlpha,detachmentNumberAlpha,  &
-        attachmentNumberBeta,detachmentNumberBeta
+        attachmentNumberBeta,detachmentNumberBeta,excitationMatrixAlpha,  &
+        relaxationMatrixAlpha,excitationMatrixBeta,relaxationMatrixBeta,  &
+        excitationNumberAlphaO2V,excitationNumberAlphaV2O,  &
+        excitationNumberBetaO2V,excitationNumberBetaV2O,  &
+        relaxationNumberAlphaO2V,relaxationNumberAlphaV2O,  &
+        relaxationNumberBetaO2V,relaxationNumberBetaV2O
       type(MQC_Variable)::CAlpha1,CBeta1,CAlpha2,CBeta2,TAlpha,TBeta
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
         tmpMQCvar4
       logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
+!hph
+      type(MQC_Variable)::POccAlpha1,POccBeta1,PDeltaMO,PDeltaOO,PDeltaVV,  &
+        PDeltaOV,PDeltaVO
 !
 !     Format Statements
 !
@@ -69,25 +80,32 @@
  1600 Format(/,1x,'Overlap between Delta-SCF states = ',F9.6,/,  &
         3x,'Alpha Overlap = ',F9.6,3x,'Beta Overlap = ',F9.6)
  2000 Format(/,1x,'Attachment/Detachment Density Analysis',A,/,  &
+        1x,'Citation: ',A,/,  &
         3x,'ALPHA: Attachement Number: ',F6.3,/,  &
         10x,'Detachment  Number: ',F6.3,/,  &
         3x,'BETA : Attachement Number: ',F6.3,/,  &
         10x,'Detachment  Number: ',F6.3)
- 3000 Format(1x,'DDNO/NIO Excitation/Detachment Number',/,  &
+ 2100 Format(/,1x,'Excitation/Relaxation Density Analysis',/,  &
+        3x,'ALPHA: Excitation Number o->v: ',F6.3,/,  &
+        3x,'       Excitation Number v->o: ',F6.3,/,  &
+        3x,'BETA : Excitation Number o->v: ',F6.3,/,  &
+        3x,'       Excitation Number v->o: ',F6.3,/,  &
+        3x,'ALPHA: Relaxation Number o->v: ',F6.3,/,  &
+        3x,'       Relaxation Number v->o: ',F6.3,/,  &
+        3x,'BETA : Relaxation Number o->v: ',F6.3,/,  &
+        3x,'       Relaxation Number v->o: ',F6.3,/)
+ 3000 Format(/,1x,'DDNO/NIO Excitation/Detachment Number',/,  &
         3x,'ALPHA: Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2,/,  &
         3x,'BETA : Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2)
  3100 Format(1x,'isNIO=',L1,3x,'isDDNO=',L1)
- 4000 Format(1x,'Relaxation Number: ',F9.6)
+ 4000 Format(/,1x,'Relaxation Number: ',F9.6)
+ 4010 Format(4x,'Alpha Contribution: ',F9.6,  &
+        /,4x,'Beta Contribution: ',F9.6,/,/)
  7000 Format(/,1x,'Writing an output matrix file. Filename: ',A)
  8999 Format(/,1x,'END OF NIO PROGRAM')
  9000 Format(/,1x,'NIO has been compiled using an unsupported version of MQCPack.',/)
-
-!hph+
-      call mqc_gaussian_setDEBUG(.false.)
-!hph-
-
 !
 !
       write(IOut,1000)
@@ -96,8 +114,8 @@
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=22,newerThanMinor=5,  &
-        newerThanRevision=3)) then
+      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=2,  &
+        newerThanRevision=0)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -174,21 +192,26 @@
       if(DEBUG) then
         call SMatrixAO%print(header='Overlap Matrix')
         call SMatrixEVals%print(header='S matrix eigen-values:')
-        call mqc_print(MatMul(Transpose(SMatrixEVecs),SMatrixEVecs),header='SEVecs(t).SEVecs')
-        call mqc_print(MatMul(MatMul(SMatrixEVecs,SMatrixEVals%diag()),TRANSPOSE(SMatrixEVecs)),6,'U.lambda.Ut')
+        call mqc_print(MatMul(Transpose(SMatrixEVecs),SMatrixEVecs),  &
+          header='SEVecs(t).SEVecs')
+        call mqc_print(MatMul(MatMul(SMatrixEVecs,SMatrixEVals%diag()),  &
+          TRANSPOSE(SMatrixEVecs)),6,'U.lambda.Ut')
       endIf
       tmpMQCvar = SMatrixEVals%rpower(0.5)
-      SMAtrixAOHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
+      SMAtrixAOHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),  &
+        TRANSPOSE(SMatrixEVecs))
       tmpMQCvar = SMatrixEVals%rpower(-0.5)
-      SMAtrixAOMinusHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),TRANSPOSE(SMatrixEVecs))
+      SMAtrixAOMinusHalf = MatMul(MatMul(SMatrixEVecs,tmpMQCvar%diag()),  &
+        TRANSPOSE(SMatrixEVecs))
       if(DEBUG) then
         call SMAtrixAOHalf%print(header='S**(1/2)')
         call SMatrixAOMinusHalf%print(header='S**(-1/2)')
       endIf
 !
-!     Load the density matrices. The code below treats all systems as open
-!     shell, so closed shell results are handled by copying the density matrix
-!     from restricted calculations into alpha and beta density matrix arrays.
+!     Load the density and MO coefficient matrices (in the AO basis). The code
+!     below treats all systems as open shell, so closed shell results are
+!     handled by copying the density matrix from restricted calculations into
+!     alpha and beta density matrix arrays.
 !
       call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
@@ -217,20 +240,22 @@
       diffDensityAlpha = PMatrixAlpha2-PMatrixAlpha1
       diffDensityBeta  = PMatrixBeta2-PMatrixBeta1
       if(iPrint.ge.1.or.DEBUG) then
-        call mqc_print(contraction(diffDensityAlpha,SMatrixAO),header='DP(alpha).S = ')
-        call mqc_print(contraction(diffDensityBeta,SMatrixAO),header='DP(beta).S  = ')
+        call mqc_print(contraction(diffDensityAlpha,SMatrixAO),  &
+          header='DP(alpha).S = ')
+        call mqc_print(contraction(diffDensityBeta,SMatrixAO),  &
+          header='DP(beta).S  = ')
       endIf
-      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,SMatrixAOHalf))
+      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityAlpha,  &
+        SMatrixAOHalf))
+      if(DEBUG) call tmpMQCvar%print(iOut,header='alpha S^{1/2}PS^{1/2}')
       call tmpMQCvar%eigen(diffDensityAlphaEVals,diffDensityAlphaEVecs)
-      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,SMatrixAOHalf))
+      tmpMQCvar = MatMul(SMatrixAOHalf,MatMul(diffDensityBeta,  &
+        SMatrixAOHalf))
+      if(DEBUG) call tmpMQCvar%print(iOut,header='beta  S^{1/2}PS^{1/2}')
       call tmpMQCvar%eigen(diffDensityBetaEVals,diffDensityBetaEVecs)
-      if(iPrint.ge.1.or.DEBUG) then
-        call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
-        call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
-      endIf
 !
-!     Order the difference density eigenvalues and eigenvectors so that the
-!     largest change occupation pair are at the HOMO-LUMO gap.
+!     Order the AO difference density eigenvectors and eigenvalues so that the
+!     largest change occupation pair is at the HOMO-LUMO gap.
 !
 !     First, take care of the alpha orbitals.
       tmpVector = diffDensityAlphaEVals
@@ -256,11 +281,41 @@
       tmpMatrix1 = diffDensityBetaEVecs
       call mqc_matrixOrderedColumns_real(tmpMatrix1,tmpVectorInt)
       diffDensityBetaEVecs = tmpMatrix1
+      if(iPrint.ge.1.or.DEBUG) then
+        call diffDensityAlphaEVals%print(header='Alpha Occupation Change Values')
+        call diffDensityBetaEVals%print(header='Beta Occupation Change Value')
+      endIf
 !
 !     Back transform the difference density natural orbitals to the AO basis.
 !
       DDNOsAlpha = MatMul(SMatrixAOMinusHalf,diffDensityAlphaEVecs)
       DDNOsBeta  = MatMul(SMatrixAOMinusHalf,diffDensityBetaEVecs)
+!
+!     Form the densities, difference densities, and DDNOs in the initial state
+!     MO basis.
+!
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,  &
+        PMatrixAlpha1))
+      PMatrixAlpha1MO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      tmpMQCvar  = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,  &
+        PMatrixBeta1))
+      PMatrixBeta1MO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CBeta1))
+      tmpMQCvar  = MatMul(Transpose(CAlpha1),MatMul(SMatrixAO,diffDensityAlpha))
+      diffDensityAlphaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CAlpha1))
+      call diffDensityAlphaMO%trimZero()
+      tmpMQCvar  = MatMul(Transpose(CBeta1),MatMul(SMatrixAO,diffDensityBeta))
+      diffDensityBetaMO = MatMul(tmpMQCvar,MatMul(SMatrixAO,CBeta1))
+      call diffDensityBetaMO%trimZero()
+      call diffDensityAlphaMO%eigen(diffDensityAlphaEValsMO,  &
+        diffDensityAlphaEVecsMO)
+      call diffDensityBetaMO%eigen(diffDensityBetaEValsMO,  &
+        diffDensityBetaEVecsMO)
+      if(iPrint.ge.1.or.DEBUG) then
+        call diffDensityAlphaEValsMO%print(  &
+          header='Alpha Occupation Change Values, MO')
+        call diffDensityBetaEValsMO%print(  &
+          header='Beta Occupation Change Value, MO')
+      endIf
 !
 !     Form the polestrength (for detachment cases) or the N-1 overlap (for
 !     excitation cases). At the end of this block, we decide if this is a
@@ -303,167 +358,209 @@
           tmpMQCvar4 = tmpMQCvar2%det()
         endIf
         tmpMQCvar = tmpMQCvar3*tmpMQCvar4
+        call tmpMQCvar%trimZero()
+        call tmpMQCvar3%trimZero()
+        call tmpMQCvar4%trimZero()
         write(iOut,1600) float(tmpMQCvar),float(tmpMQCvar3),float(tmpMQCvar4)
       endIf
 !
 !     Carry out attachment/detachment density analysis.
 !
-      Allocate(tmpMatrix2(nBasis,nBasis2),tmpMatrix3(nBasis,nBasis2))
-#ifdef PGI
-      tmpMatrix2 = dfloat(0)
-      tmpMatrix3 = dfloat(0)
-#else
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-#endif
-      do i = 1,nBasis
-        tmpVector = DDNOsAlpha%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-        if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
-          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
-        else
-          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-        endIf
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-      do i = 1,nBasis
-        tmpVector = DDNOsBeta%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
-        if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
-          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
-        else
-          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-        endIf
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
-      write(iOut,2000) ' (Original 1995 Model)',float(attachmentNumberAlpha),  &
+      tmpMQCvar = partitionDensityMatrix(diffDensityAlphaEVecsMO,  &
+        diffDensityAlphaEValsMO,'attachment')
+      attachmentNumberAlpha = tmpMQCvar%trace()
+      tmpMQCvar = partitionDensityMatrix(diffDensityAlphaEVecsMO,  &
+        diffDensityAlphaEValsMO,'detachment')
+      detachmentNumberAlpha = tmpMQCvar%trace()
+      tmpMQCvar = partitionDensityMatrix(diffDensityBetaEVecsMO,  &
+        diffDensityBetaEValsMO,'attachment')
+      attachmentNumberBeta = tmpMQCvar%trace()
+      tmpMQCvar = partitionDensityMatrix(diffDensityBetaEVecsMO,  &
+        diffDensityBetaEValsMO,'detachment')
+      detachmentNumberBeta = tmpMQCvar%trace()
+      write(iOut,2000) ' (Original 1995 Model)',  &
+        'Head-Gordon, Grana, Maurice, and White, J. Phys. Chem. 99, 14261-14270 (1995).',  &
+        float(attachmentNumberAlpha),  &
         float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
         float(detachmentNumberBeta)
 !
-!     Try promotion number a second time (Modified Model A). Alpha...
+!     Evaluate the excitation number.
 !
-      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar2 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
-      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-      do i = 1,nBasis
-        if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
-          tmpVector = tmpMQCvar3%column(i)
-          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
-        else
-          tmpVector = tmpMQCvar2%column(i)
-          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-        endIf
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
+      call MO_partition(diffDensityAlphaMO,PMatrixAlpha1MO,  &
+        traceXvv=attachmentNumberAlpha)
+      call MO_partition(diffDensityAlphaMO,PMatrixAlpha1MO,  &
+        traceXoo=detachmentNumberAlpha)
+      call MO_partition(diffDensityBetaMO,PMatrixBeta1MO,  &
+        traceXvv=attachmentNumberBeta)
+      call MO_partition(diffDensityBetaMO,PMatrixBeta1MO,  &
+        traceXoo=detachmentNumberBeta)
+      write(iOut,2000) ' (Excitation Number Model)',  &
+        'Barca, Gilbert, and Gill, J. Chem. Theory Comput. 14, 9-13 (2018).',  &
+        float(attachmentNumberAlpha),  &
+        -float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+        -float(detachmentNumberBeta)
 !
-!     Promotion Number Model A...beta...
+!     Evaluate the Excitation/Relaxation model.
 !
-      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar2 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
-      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-      do i = 1,nBasis
-        if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
-          tmpVector = tmpMQCvar3%column(i)
-          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
-          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
-        else
-          tmpVector = tmpMQCvar2%column(i)
-          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
-          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-        endIf
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
-      write(iOut,2000) ' (Modified Model A)',float(attachmentNumberAlpha),  &
-        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
-        float(detachmentNumberBeta)
-!
-!     Try promotion number a third time...alpha.
-!
+      tmpMQCvar = partitionDensityMatrix(diffDensityAlphaEVecsMO,  &
+        diffDensityAlphaEValsMO,'excitation')
+      excitationMatrixAlpha = tmpMQCvar
+      tmpMQCvar = partitionDensityMatrix(diffDensityAlphaEVecsMO,  &
+        diffDensityAlphaEValsMO,'relaxation')
+      relaxationMatrixAlpha = tmpMQCvar
+      tmpMQCvar = partitionDensityMatrix(diffDensityBetaEVecsMO,  &
+        diffDensityBetaEValsMO,'excitation')
+      excitationMatrixBeta = tmpMQCvar
+      tmpMQCvar = partitionDensityMatrix(diffDensityBetaEVecsMO,  &
+        diffDensityBetaEValsMO,'relaxation')
+      relaxationMatrixBeta = tmpMQCvar
+      call MO_partition(excitationMatrixAlpha,PMatrixAlpha1MO,  &
+        traceXoo=excitationNumberAlphaO2V,  &
+        traceXvv=excitationNumberAlphaV2O)
+      call MO_partition(excitationMatrixBeta,PMatrixBeta1MO,  &
+        traceXoo=excitationNumberBetaO2V,  &
+        traceXvv=excitationNumberBetaV2O)
+      call MO_partition(relaxationMatrixAlpha,PMatrixAlpha1MO,  &
+        traceXoo=relaxationNumberAlphaO2V,  &
+        traceXvv=relaxationNumberAlphaV2O)
+      call MO_partition(relaxationMatrixBeta,PMatrixBeta1MO,  &
+        traceXoo=relaxationNumberBetaO2V,  &
+        traceXvv=relaxationNumberBetaV2O)
 
-      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
-      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsAlpha))
-      tmpMQCvar4 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-      do i = 1,nBasis
-        tmpVector = tmpMQCvar4%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+      write(iOut,2100) float(excitationNumberAlphaO2V),  &
+        float(excitationNumberAlphaV2O),  &
+        float(excitationNumberBetaO2V),  &
+        float(excitationNumberBetaV2O),  &
+        float(relaxationNumberAlphaO2V),  &
+        float(relaxationNumberAlphaV2O),  &
+        float(relaxationNumberBetaO2V),  &
+        float(relaxationNumberBetaV2O)
+
+!hph+
+!      goto 999
+!hph-
+
+
+!hph+
+!!
+!!     Try promotion number a second time (Modified Model A). Alpha...
+!!
+!      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+!        MatMul(SMatrixAO,DDNOsAlpha))
+!      tmpMQCvar2 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
+!      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+!        MatMul(SMatrixAO,DDNOsAlpha))
+!      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
+!      tmpMatrix2 = float(0)
+!      tmpMatrix3 = float(0)
+!      do i = 1,nBasis
+!        if(float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])).ge.float(0)) then
+!          tmpVector = tmpMQCvar3%column(i)
+!          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!        else
+!          tmpVector = tmpMQCvar2%column(i)
+!          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+!        endIf
+!      endDo
+!      attachmentDensity = tmpMatrix2
+!      detachmentDensity = tmpMatrix3
+!      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
+!      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
+!!
+!!     Promotion Number Model A...beta...
+!!
+!      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
+!        MatMul(SMatrixAO,DDNOsBeta))
+!      tmpMQCvar2 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
+!      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+!        MatMul(SMatrixAO,DDNOsBeta))
+!      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
+!      tmpMatrix2 = float(0)
+!      tmpMatrix3 = float(0)
+!      do i = 1,nBasis
+!        if(float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])).ge.float(0)) then
+!          tmpVector = tmpMQCvar3%column(i)
+!          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+!          tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!        else
+!          tmpVector = tmpMQCvar2%column(i)
+!          tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!            float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+!          tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+!        endIf
+!      endDo
+!      attachmentDensity = tmpMatrix2
+!      detachmentDensity = tmpMatrix3
+!      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
+!      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
+!      write(iOut,2000) ' (Modified Model A)',float(attachmentNumberAlpha),  &
+!        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+!        float(detachmentNumberBeta)
+!!
+!!     Try promotion number a third time...alpha.
+!!
 !
-        tmpVector = tmpMQCvar3%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
-        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
+!      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[1,nElAlpha1])),  &
+!        MatMul(SMatrixAO,DDNOsAlpha))
+!      tmpMQCvar3 = MatMul(CAlpha1%subMatrix(newrange2=[1,nElAlpha1]),tmpMQCvar1)
+!      tmpMQCvar1 = MatMul(Transpose(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse])),  &
+!        MatMul(SMatrixAO,DDNOsAlpha))
+!      tmpMQCvar4 = MatMul(CAlpha1%subMatrix(newrange2=[nElAlpha1+1,nBasisUse]),tmpMQCvar1)
+!      tmpMatrix2 = float(0)
+!      tmpMatrix3 = float(0)
+!      do i = 1,nBasis
+!        tmpVector = tmpMQCvar4%column(i)
+!        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!!
+!        tmpVector = tmpMQCvar3%column(i)
+!        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!          float(MQC_Variable_get_MQC(diffDensityAlphaEVals,[i])))
+!        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+!      endDo
+!      attachmentDensity = tmpMatrix2
+!      detachmentDensity = tmpMatrix3
+!      attachmentNumberAlpha = contraction(attachmentDensity,SMatrixAO)
+!      detachmentNumberAlpha = contraction(detachmentDensity,SMatrixAO)
+!!
+!!     Try promotion number a third time...beta.
+!!
+!      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
+!        MatMul(SMatrixAO,DDNOsBeta))
+!      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
+!      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
+!        MatMul(SMatrixAO,DDNOsBeta))
+!      tmpMQCvar4 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
+!      tmpMatrix2 = float(0)
+!      tmpMatrix3 = float(0)
+!      do i = 1,nBasis
+!        tmpVector = tmpMQCvar4%column(i)
+!        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+!        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
+!!
+!        tmpVector = tmpMQCvar3%column(i)
+!        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
+!          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
+!        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
+!      endDo
+!      attachmentDensity = tmpMatrix2
+!      detachmentDensity = tmpMatrix3
+!      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
+!      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
+!      write(iOut,2000) ' (Modified Model B)',float(attachmentNumberAlpha),  &
+!        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
+!        float(detachmentNumberBeta)
 !
-!     Try promotion number a third time...beta.
-!
-      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[1,nElBeta1])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar3 = MatMul(CBeta1%subMatrix(newrange2=[1,nElBeta1]),tmpMQCvar1)
-      tmpMQCvar1 = MatMul(Transpose(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse])),  &
-        MatMul(SMatrixAO,DDNOsBeta))
-      tmpMQCvar4 = MatMul(CBeta1%subMatrix(newrange2=[nElBeta1+1,nBasisUse]),tmpMQCvar1)
-      tmpMatrix2 = float(0)
-      tmpMatrix3 = float(0)
-      do i = 1,nBasis
-        tmpVector = tmpMQCvar4%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
-        tmpMatrix2 = tmpMatrix2 + tmpMatrix1
-!
-        tmpVector = tmpMQCvar3%column(i)
-        tmpMatrix1 = mqc_outerProduct_real(tmpVector,tmpVector,  &
-          float(MQC_Variable_get_MQC(diffDensityBetaEVals,[i])))
-        tmpMatrix3 = tmpMatrix3 - tmpMatrix1
-      endDo
-      attachmentDensity = tmpMatrix2
-      detachmentDensity = tmpMatrix3
-      attachmentNumberBeta = contraction(attachmentDensity,SMatrixAO)
-      detachmentNumberBeta = contraction(detachmentDensity,SMatrixAO)
-      write(iOut,2000) ' (Modified Model B)',float(attachmentNumberAlpha),  &
-        float(detachmentNumberAlpha),float(attachmentNumberBeta),  &
-        float(detachmentNumberBeta)
+!hph-
+
+
 !
 !     Compute the transition dipole and dipole strength for DDNO jobs.
 !
@@ -531,10 +628,11 @@
         else
           dipoleStrength = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB*TDparticleHoleMag
           call dipoleStrength%print(header='Dipole Strength (au) =')
-          temp = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB
-          temp = float(1) - temp
-          write(iOut,4000) temp
         endIf
+        temp = TDOverlapA*TDOverlapA*TDOverlapB*TDOverlapB
+        temp = float(1) - temp
+        write(iOut,4000) temp
+        write(iOut,4010) float(TDOverlapA*TDOverlapA),float(TDOverlapB*TDOverlapB)
         oscillatorStrength = float(2)*deltaSCFEnergy/float(3)
         oscillatorStrength = oscillatorStrength*dipoleStrength
         call dipoleStrength%print(header='dipoleStrength')

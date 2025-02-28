@@ -51,6 +51,7 @@
         iMinusOne
 !
       integer(kind=int64)::i
+      real(kind=real64)::overlapTest
       real(kind=real64),dimension(:),allocatable::vector
       type(MQC_Variable)::TMatrix
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3
@@ -63,6 +64,25 @@
       nPlusOne = 0
       nMinusOne = 0
       vector = diffDensityEVals
+
+!hph+
+!
+!     This block of code forms the overlap as a product of the corresponding
+!     orbital overlaps I would get if I use Ortiz's relationship between those
+!     and the difference density eigenvalues.
+!
+      overlapTest = 1.0
+      do i = 1,nBasis
+        overlapTest = overlapTest*(1.0-vector(i)**2)
+      endDo
+      write(iOut,*)' Hrant - overlap test 1: ',overlapTest
+      overlapTest = 1.0
+      do i = 1,nBasis
+        overlapTest = overlapTest*sqrt(abs((1.0-vector(i)**2)))
+      endDo
+      write(iOut,*)' Hrant - overlap test 2: ',overlapTest
+!hph-
+
       do i = 1,nBasis
         if(vector(i).ge.0.999) then
           vector(i) = dfloat(0)
@@ -251,6 +271,141 @@
       return
       end function getOverlapMatrix
 
+
+      function partitionDensityMatrix(eigenvectors,eigenvalues,model) result(densityOut)
+!
+!     This function partitions a density matrix according to the model described
+!     by input dummy argument <model>. It is assumed that the density matrix
+!     eigenvectors/NOs are in an orthogonormal basis.
+!
+!
+!     H. P. Hratchian, 2025
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_variable),intent(in)::eigenvectors,eigenvalues
+      character(len=*),intent(in)::model
+      type(MQC_variable)::densityOut
+      character(len=64)::myModel
+      integer(kind=int64)::i,nBasis
+      real(kind=real64),dimension(:),allocatable::tmpVector
+      real(kind=real64),dimension(:,:),allocatable::tmpMatrix
+!
+!
+!     Based on the value of <model>, form <densityOut>.
+!
+      nBasis = Size(eigenvalues)
+      allocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
+#ifdef PGI
+      tmpMatrix = dfloat(0)
+#else
+      tmpMatrix = float(0)
+#endif
+      call string_change_case(model,'U',myModel)
+      select case(TRIM(myModel))
+      case('ATTACHMENT')
+        do i = 1,nBasis
+          if(float(MQC_Variable_get_MQC(eigenvalues,[i])).ge.float(0)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case('DETACHMENT')
+        do i = 1,nBasis
+          if(float(MQC_Variable_get_MQC(eigenvalues,[i])).lt.float(0)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix -  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case('RELAXATION')
+        do i = 1,nBasis
+          if(abs(float(MQC_Variable_get_MQC(eigenvalues,[i]))).lt.  &
+            (1.0-MQC_small-MQC_small)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case('EXCITATION')
+        do i = 1,nBasis
+          if(abs(float(MQC_Variable_get_MQC(eigenvalues,[i]))).gt.  &
+            (1.0-MQC_small-MQC_small)) then
+            tmpVector = eigenvectors%column(i)
+            tmpMatrix = tmpMatrix +  &
+              mqc_outerProduct_real(tmpVector,tmpVector,  &
+              float(MQC_Variable_get_MQC(eigenvalues,[i])))
+          endIf
+        endDo
+      case default
+        call mqc_error('partitionDensityMatrix: Unknown model type sent.')
+      end select
+      densityOut = tmpMatrix
+!
+      deAllocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
+      return
+      end function partitionDensityMatrix
+
+
+      subroutine MO_partition(XIn,density,traceXoo,traceXov,traceXvo,  &
+        traceXvv,Xoo,Xov,Xvo,Xvv)
+!
+!     This routine partitions the matrix <XIn> into MO blocks. It is assumed
+!     that XIn and Density are sent in the MO basis.
+!
+!     Output dummy arguments <traceXoo>, <traceXov>, <traceXvo>, <traceXvv>,
+!     <Xoo>, <Xov>, <Xvo>, and <Xvv> are all optional. All of these output
+!     arguments are MQC_variable objects.
+!
+!     Note that <traceXov> and <traceXvo> are always zero, but they are included
+!     in the argument list for completion.
+!
+!     H. P. Hratchian, 2025
+!
+!
+!     Variable Declarations
+!
+      implicit none
+      type(MQC_variable),intent(in)::XIn,density
+      type(MQC_variable),optional::traceXoo,traceXov,traceXvo,traceXvv
+      type(MQC_variable),optional::Xoo,Xov,Xvo,Xvv
+      type(MQC_variable)::densityVirt,XTemp
+!
+!
+!     Figure out if we need to build 1-<density> for projections in the virtual
+!     block on either the bra or ket index.
+!
+      if(Present(traceXvv).or.Present(Xov).or.Present(Xvo).or.Present(Xvv))  &
+        densityVirt = MQC_Variable_UnitMatrix(Size(density,1))-density
+!
+!     Evaluate whichever output dummy arguments the calling program unit sent.
+!
+      if(Present(traceXoo).or.Present(Xoo)) then
+        XTemp = MatMul(density,MatMul(XIn,density))
+        if(Present(traceXoo)) traceXoo = XTemp%trace()
+        if(Present(Xoo)) Xoo = XTemp
+      endIf
+!
+      if(Present(traceXov)) traceXov = 0.0
+      if(Present(Xov)) Xov = MatMul(density,MatMul(XIn,densityVirt))
+!
+      if(Present(traceXvo)) traceXvo = 0.0
+      if(Present(Xvo)) Xvo = MatMul(densityVirt,MatMul(XIn,density))
+!
+      if(Present(traceXvv).or.Present(Xvv)) then
+        XTemp = MatMul(densityVirt,MatMul(XIn,densityVirt))
+        if(Present(traceXvv)) traceXvv = XTemp%trace()
+        if(Present(Xvv)) Xvv = XTemp
+      endIf
+!
+      return
+      end subroutine MO_partition
 !
 !
 !
