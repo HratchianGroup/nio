@@ -12,7 +12,7 @@
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint=1,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint=0,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
@@ -21,7 +21,8 @@
       integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
       real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         totalEnergy1,totalEnergy2,deltaTotalEnergy,temp
-      real(kind=real64),dimension(3)::transitionDipole
+      real(kind=real64),dimension(3)::transitionDipole,particleXYZ(3),  &
+        holeXYZ(3)
       real(kind=real64),allocatable,dimension(:)::cart1,cart2,  &
         tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
@@ -677,10 +678,10 @@
           call hDDNO%print(header='hole DDNO')
         endIf
         if(DEBUG) then
-          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<p|p>')
-          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<h|h>')
-          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<h|p>')
-          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<p|h>')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='(p|p)')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='(h|h)')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='(h|p)')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='(p|h)')
         endIf
         if(DEBUG) then
           tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,hDDNO)
@@ -716,6 +717,14 @@
         oscillatorStrength = oscillatorStrength*dipoleStrength
         call dipoleStrength%print(header='dipoleStrength')
         call oscillatorStrength%print(header='Oscillator Strength  =')
+        particleXYZ(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,pDDNO))
+        particleXYZ(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO))
+        particleXYZ(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,pDDNO))
+        holeXYZ(1) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
+        holeXYZ(2) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
+        holeXYZ(3) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
+        call mqc_print(particleXYZ,6,header='<x> particle',blank_at_top=.true.)
+        call mqc_print(holeXYZ,6,header='<x> hole',blank_at_top=.true.)
       endIf
 
       if(isNIO.or..not.doTestCode) goto 998
