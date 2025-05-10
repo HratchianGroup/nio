@@ -2,8 +2,8 @@
 # This is a simple makefile for building spin-squared calculation code.
 #
 MQCDir       = $(mqcinstall)
-MQCMODS      = $(MQCDir)/PGI/mod
-MQCLIB       = $(MQCDir)/PGI/lib
+MQCMODS      = $(MQCDir)/NVidia/mod
+MQCLIB       = $(MQCDir)/NVidia/lib
 LIBS         = -llapack -lblas -L$(MQCLIB)
 F03Flags     = 
 RunF         = pgfortran -DPGI -i8 -r8 -Mallocatable=03

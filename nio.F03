@@ -12,15 +12,17 @@
 !     Variable Declarations
 !
       implicit none
-      integer(kind=int64)::nCommands,iPrint=1,i,nAtoms,nAtoms2,  &
+      integer(kind=int64)::nCommands,iPrint=0,i,nAtoms,nAtoms2,  &
         nBasis,nBasis2,nBasisUse,nBasisUse2,nEl1,nEl2,nElAlpha1,  &
         nElBeta1,nElAlpha2,NElBeta2,nPlusOneAlpha,nMinusOneAlpha,  &
         iPlusOneAlpha,iMinusOneAlpha,nPlusOneBeta,nMinusOneBeta,  &
         iPlusOneBeta,iMinusOneBeta,nPlusOne,nMinusOne,  &
         nRelaxationDDNOsAlpha,nRelaxationDDNOsBeta
       integer(kind=int64),allocatable,dimension(:)::tmpVectorInt
-      real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy,temp
-      real(kind=real64),dimension(3)::transitionDipole
+      real(kind=real64)::scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
+        totalEnergy1,totalEnergy2,deltaTotalEnergy,temp
+      real(kind=real64),dimension(3)::transitionDipole,particleXYZ(3),  &
+        holeXYZ(3)
       real(kind=real64),allocatable,dimension(:)::cart1,cart2,  &
         tmpVector
       real(kind=real64),allocatable,dimension(:,:)::tmpMatrix1,  &
@@ -36,7 +38,9 @@
       type(MQC_Variable)::SMatrixAO,SMatrixEVecs,SMatrixEVals,  &
         SMatrixAOHalf,SMatrixAOMinusHalf
       type(MQC_Variable)::PMatrixAlpha1,PMatrixBeta1,PMatrixTotal1,  &
-        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,PMatrixAlpha1MO,  &
+        PMatrixAlpha2,PMatrixBeta2,PMatrixTotal2,PMatrixCorrAlpha1,  &
+        PMatrixCorrBeta1,PMatrixCorrTotal1,PMatrixCorrAlpha2,  &
+        PMatrixCorrBeta2,PMatrixCorrTotal2,PMatrixAlpha1MO,  &
         PMatrixBeta1MO,PMatrixAlpha2MO,PMatrixBeta2MO,diffDensityAlpha,  &
         diffDensityBeta,diffDensityAlphaEVecs,diffDensityAlphaEVals,  &
         diffDensityBetaEVecs,diffDensityBetaEVals,diffDensityAlphaMO,  &
@@ -53,14 +57,16 @@
       type(MQC_Variable)::dipoleAOx,dipoleAOy,dipoleAOz
       type(MQC_Variable)::tmpMQCvar,tmpMQCvar1,tmpMQCvar2,tmpMQCvar3,  &
         tmpMQCvar4
-      logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO
+      logical::doTestCode=.false.,doMatrixFileOut=.false.,isNIO,isDDNO,  &
+        found,postSCF
 !hph
       type(MQC_Variable)::POccAlpha1,POccBeta1,PDeltaMO,PDeltaOO,PDeltaVV,  &
         PDeltaOV,PDeltaVO
 !
 !     Format Statements
 !
- 1000 Format(1x,'Enter Program NIO.')
+ 1000 Format(1x,'Enter Program NIO'/,  &
+             1x,'Version 2025.05.10.00')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
@@ -69,7 +75,7 @@
  1100 Format(1x,'nAtoms=',I4,3x,'nBasis   =',I4,3x,'nBasisUse=',I4,/,  &
              1x,'nEl1  =',I4,3x,'nElAlpha1=',I4,3x,'nElBeta  =',I4,/,  &
              1x,'nEl2  =',I4,3x,'nElAlpha2=',I4,3x,'nElBeta  =',I4,/)
- 1200 Format(/,1x,'SCF Energies',/,  &
+ 1200 Format(/,1x,A,' Energies',/,  &
         3x,'SCF 1:     ',F15.8,' a.u.',/,  &
         3x,'SCF 2:     ',F15.8,' a.u.',/,  &
         3x,'Delta-SCF: ',F15.8,' a.u.',2x,'=',2x,F15.8,' eV',/,  &
@@ -175,16 +181,6 @@
       endIf
       DeAllocate(tmpVector)
 !
-!     Pull the energies from the two jobs and report the delta-E value in a few
-!     units.
-!
-      scfEnergy1 = GMatrixFile1%getValReal('scfEnergy')
-      scfEnergy2 = GMatrixFile2%getValReal('scfEnergy')
-      deltaSCFEnergy = scfEnergy2-scfEnergy1
-      write(iOut,1200) scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
-        deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
-        deltaSCFEnergy*evPHartree*nmPev
-!
 !     Load the atomic orbital overlap matrix and form S^(1/2) and S^(-1/2).
 !
       SMatrixAO = getOverlapMatrix(GMatrixFile1)
@@ -208,31 +204,116 @@
         call SMatrixAOMinusHalf%print(header='S**(-1/2)')
       endIf
 !
-!     Load the density and MO coefficient matrices (in the AO basis). The code
-!     below treats all systems as open shell, so closed shell results are
+!     Load the SCF densities and MO coefficient matrices (in the AO basis). The
+!     code below treats all systems as open shell, so closed shell results are
 !     handled by copying the density matrix from restricted calculations into
 !     alpha and beta density matrix arrays.
 !
-      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+
+!hph+
+!      call GMatrixFile1%getArray('ALPHA MP2 DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
+!      call GMatrixFile1%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=tmpMQCvar)
+!      PMatrixAlpha1 = PMatrixAlpha1-tmpMQCvar
+!      call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
+!      if(GMatrixFile1%isUnrestricted()) then
+!        call GMatrixFile1%getArray('BETA MP2 DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+!        call GMatrixFile1%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=tmpMQCvar)
+!        PMatrixBeta1 = PMatrixBeta1-tmpMQCvar
+!        call GMatrixFile1%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta1)
+!      else
+!        PMatrixBeta1  = PMatrixAlpha1
+!        CBeta1 = CAlpha1
+!      endIf
+!      PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
+!      call GMatrixFile2%getArray('ALPHA MP2 DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+!      call GMatrixFile2%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=tmpMQCvar)
+!      PMatrixAlpha2 = PMatrixAlpha2-tmpMQCvar
+!      call GMatrixFile2%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha2)
+!      if(GMatrixFile2%isUnrestricted()) then
+!        call GMatrixFile2%getArray('BETA MP2 DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+!        call GMatrixFile2%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=tmpMQCvar)
+!        PMatrixBeta2 = PMatrixBeta2-tmpMQCvar
+!        call GMatrixFile2%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta2)
+!      else
+!        PMatrixBeta2  = PMatrixAlpha2
+!        CBeta2 = CAlpha2
+!      endIf
+!      PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
+!hph-
+
+      call GMatrixFile1%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha1)
       call GMatrixFile1%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha1)
       if(GMatrixFile1%isUnrestricted()) then
-        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
+        call GMatrixFile1%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta1)
         call GMatrixFile1%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta1)
       else
         PMatrixBeta1  = PMatrixAlpha1
         CBeta1 = CAlpha1
       endIf
       PMatrixTotal1 = PMatrixAlpha1+PMatrixBeta1
-      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
+      call GMatrixFile2%getArray('ALPHA SCF DENSITY MATRIX',mqcVarOut=PMatrixAlpha2)
       call GMatrixFile2%getArray('ALPHA MO COEFFICIENTS',mqcVarOut=CAlpha2)
       if(GMatrixFile2%isUnrestricted()) then
-        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
+        call GMatrixFile2%getArray('BETA SCF DENSITY MATRIX',mqcVarOut=PMatrixBeta2)
         call GMatrixFile2%getArray('BETA MO COEFFICIENTS',mqcVarOut=CBeta2)
       else
         PMatrixBeta2  = PMatrixAlpha2
         CBeta2 = CAlpha2
       endIf
       PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
+!
+!     Look for the total density and see if we think we're looking at a Post-SCF
+!     job. If we are, then we fill in the correlated density matrices.
+!
+      call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',  &
+        mqcVarOut=PMatrixCorrAlpha1,foundOut=found)
+      postSCF = found
+
+      write(iOut,*)' Hrant - postSCF = ',postSCF
+      if(postSCF) then
+        call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',  &
+          mqcVarOut=PMatrixCorrAlpha2,foundOut=found)
+        postSCF = found
+      endIf
+      if(postSCF) then
+        if(GMatrixFile1%isUnrestricted()) then
+          call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixCorrBeta1)
+        else
+          PMatrixCorrBeta1  = PMatrixCorrAlpha1
+        endIf
+        if(GMatrixFile2%isUnrestricted()) then
+          call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixCorrBeta2)
+        else
+          PMatrixCorrBeta2  = PMatrixCorrAlpha2
+        endIf
+        PMatrixCorrTotal1 = PMatrixCorrAlpha1+PMatrixCorrBeta1
+        PMatrixCorrTotal2 = PMatrixCorrAlpha2+PMatrixCorrBeta2
+      endIf
+
+
+
+!hph Hrant - I left off here on building up post-SCF logic and data collection.
+
+
+
+
+
+!
+!     Pull the energies from the two jobs and report the delta-E value in a few
+!     units.
+!
+      scfEnergy1 = GMatrixFile1%getValReal('scfEnergy')
+      scfEnergy2 = GMatrixFile2%getValReal('scfEnergy')
+      deltaSCFEnergy = scfEnergy2-scfEnergy1
+      write(iOut,1200) 'SCF',scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
+        deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
+        deltaSCFEnergy*evPHartree*nmPev
+      totalEnergy1 = GMatrixFile1%getValReal('energy')
+      totalEnergy2 = GMatrixFile2%getValReal('energy')
+      deltaTotalEnergy = totalEnergy2-totalEnergy1
+      write(iOut,1200) 'Total',totalEnergy1,totalEnergy2,  &
+        deltaTotalEnergy,deltaTotalEnergy*evPHartree,  &
+        deltaTotalEnergy*cmM1PHartree,deltaTotalEnergy*evPHartree*nmPev
 !
 !     Form the difference density and construct the DDNOs, which are NIOs in
 !     electron detachment cases.
@@ -598,10 +679,10 @@
           call hDDNO%print(header='hole DDNO')
         endIf
         if(DEBUG) then
-          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<p|p>')
-          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<h|h>')
-          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='<h|p>')
-          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='<p|h>')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='(p|p)')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='(h|h)')
+          call mqc_print_scalar_real(float(dot_product(hDDNO,MQC_Variable_MatrixVector(SMatrixAO,pDDNO))),6,header='(h|p)')
+          call mqc_print_scalar_real(float(dot_product(pDDNO,MQC_Variable_MatrixVector(SMatrixAO,hDDNO))),6,header='(p|h)')
         endIf
         if(DEBUG) then
           tmpMQCvar = MQC_Variable_MatrixVector(dipoleAOy,hDDNO)
@@ -637,12 +718,20 @@
         oscillatorStrength = oscillatorStrength*dipoleStrength
         call dipoleStrength%print(header='dipoleStrength')
         call oscillatorStrength%print(header='Oscillator Strength  =')
+        particleXYZ(1) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOx,pDDNO))
+        particleXYZ(2) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOy,pDDNO))
+        particleXYZ(3) =  dot_product(pDDNO,MQC_Variable_MatrixVector(dipoleAOz,pDDNO))
+        holeXYZ(1) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOx,hDDNO))
+        holeXYZ(2) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOy,hDDNO))
+        holeXYZ(3) =  dot_product(hDDNO,MQC_Variable_MatrixVector(dipoleAOz,hDDNO))
+        call mqc_print(particleXYZ,6,header='<x> particle',blank_at_top=.true.)
+        call mqc_print(holeXYZ,6,header='<x> hole',blank_at_top=.true.)
       endIf
 
       if(isNIO.or..not.doTestCode) goto 998
 
 !hph+
-      goto 999
+      goto 998
 !hph-
 
 
@@ -665,7 +754,7 @@
         nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
       write(*,*)
 
-      goto 999
+      goto 998
 
       write(*,*)
       write(*,*)' Hrant - Calling projectDDNOs for BETA spin...'
