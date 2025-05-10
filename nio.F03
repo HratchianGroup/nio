@@ -259,8 +259,6 @@
         CBeta2 = CAlpha2
       endIf
       PMatrixTotal2 = PMatrixAlpha2+PMatrixBeta2
-
-
 !
 !     Look for the total density and see if we think we're looking at a Post-SCF
 !     job. If we are, then we fill in the correlated density matrices.
@@ -268,23 +266,31 @@
       call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',  &
         mqcVarOut=PMatrixCorrAlpha1,foundOut=found)
       postSCF = found
-      if(GMatrixFile1%isUnrestricted()) then
-        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixCorrBeta1)
-      else
-        PMatrixCorrBeta1  = PMatrixCorrAlpha1
+
+      write(iOut,*)' Hrant - postSCF = ',postSCF
+      if(postSCF) then
+        call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',  &
+          mqcVarOut=PMatrixCorrAlpha2,foundOut=found)
+        postSCF = found
       endIf
-      PMatrixCorrTotal1 = PMatrixCorrAlpha1+PMatrixCorrBeta1
+      if(postSCF) then
+        if(GMatrixFile1%isUnrestricted()) then
+          call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixCorrBeta1)
+        else
+          PMatrixCorrBeta1  = PMatrixCorrAlpha1
+        endIf
+        if(GMatrixFile2%isUnrestricted()) then
+          call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=PMatrixCorrBeta2)
+        else
+          PMatrixCorrBeta2  = PMatrixCorrAlpha2
+        endIf
+        PMatrixCorrTotal1 = PMatrixCorrAlpha1+PMatrixCorrBeta1
+        PMatrixCorrTotal2 = PMatrixCorrAlpha2+PMatrixCorrBeta2
+      endIf
+
 
 
 !hph Hrant - I left off here on building up post-SCF logic and data collection.
-
-      PMatrixAlpha1 = PMatrixAlpha1-tmpMQCvar
-        call GMatrixFile1%getArray('BETA DENSITY MATRIX',mqcVarOut=tmpMQCvar)
-        PMatrixBeta1 = PMatrixBeta1-tmpMQCvar
-      call GMatrixFile2%getArray('ALPHA DENSITY MATRIX',mqcVarOut=tmpMQCvar)
-      PMatrixAlpha2 = PMatrixAlpha2-tmpMQCvar
-        call GMatrixFile2%getArray('BETA DENSITY MATRIX',mqcVarOut=tmpMQCvar)
-        PMatrixBeta2 = PMatrixBeta2-tmpMQCvar
 
 
 
@@ -715,7 +721,7 @@
       if(isNIO.or..not.doTestCode) goto 998
 
 !hph+
-      goto 999
+      goto 998
 !hph-
 
 
@@ -738,7 +744,7 @@
         nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
       write(*,*)
 
-      goto 999
+      goto 998
 
       write(*,*)
       write(*,*)' Hrant - Calling projectDDNOs for BETA spin...'
