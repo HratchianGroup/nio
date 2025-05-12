@@ -793,6 +793,47 @@
         call GMatrixFile1%getArray('COORDINATES OF EACH SHELL',mqcVarOut=tmpMQCvar)
         call GMatrixFileOut%writeArray2('COORDINATES OF EACH SHELL',tmpMQCvar)
 !
+!       HPH -- Do a test to see if NBasis.ne.NBasisUse and then print out
+!       dimensions of the arrays being written in the lines below.
+!
+        if(nBasis.ne.nBasisUse) then
+          write(iOut,*)
+          write(iOut,*)' nBasis != NBasisUse'
+          write(iOut,*)'            Dim(DDNOsAlpha)'
+          write(iOut,*)'                nRows = ',Size(DDNOsAlpha,1)
+          write(iOut,*)'                nCols = ',Size(DDNOsAlpha,2)
+          write(iOut,*)'            Dim(DDNOsBeta)'
+          write(iOut,*)'                nRows = ',Size(DDNOsBeta,1)
+          write(iOut,*)'                nCols = ',Size(DDNOsBeta,2)
+          write(iOut,*)'            Dim(diffDensityAlphaEVals)'
+          write(iOut,*)'                nRows = ',Size(diffDensityAlphaEVals)
+          write(iOut,*)'            Dim(diffDensityBetaEVals)'
+          write(iOut,*)'                nRows = ',Size(diffDensityBetaEVals)
+          tmpVector = diffDensityAlphaEVals
+          write(iOut,*)'            Max pruned alpha eval = ',MaxVal(ABS(tmpVector(nBasisUse+1:)))
+          diffDensityAlphaEVals = tmpVector(1:nBasisUse)
+          tmpVector = diffDensityBetaEVals
+          write(iOut,*)'            Max pruned Beta eval  = ',MaxVal(ABS(tmpVector(nBasisUse+1:)))
+          diffDensityBetaEVals = tmpVector(1:nBasisUse)
+          tmpMatrix1 = DDNOsAlpha
+          DDNOsAlpha = tmpMatrix1(:,1:nBasisUse)
+          tmpMatrix1 = DDNOsBeta
+          DDNOsBeta = tmpMatrix1(:,1:nBasisUse)
+          write(iOut,*)
+          write(iOut,*)' AFTER pruning arrays'
+          write(iOut,*)'            Dim(DDNOsAlpha)'
+          write(iOut,*)'                nRows = ',Size(DDNOsAlpha,1)
+          write(iOut,*)'                nCols = ',Size(DDNOsAlpha,2)
+          write(iOut,*)'            Dim(DDNOsBeta)'
+          write(iOut,*)'                nRows = ',Size(DDNOsBeta,1)
+          write(iOut,*)'                nCols = ',Size(DDNOsBeta,2)
+          write(iOut,*)'            Dim(diffDensityAlphaEVals)'
+          write(iOut,*)'                nRows = ',Size(diffDensityAlphaEVals)
+          write(iOut,*)'            Dim(diffDensityBetaEVals)'
+          write(iOut,*)'                nRows = ',Size(diffDensityBetaEVals)
+          write(iOut,*)
+        endIf
+!
 !       DDNO eigenvectors and eigenvalues...
         call GMatrixFileOut%writeArray2('ALPHA ORBITAL ENERGIES',diffDensityAlphaEVals)
         call GMatrixFileOut%writeArray2('BETA ORBITAL ENERGIES',diffDensityBetaEVals)

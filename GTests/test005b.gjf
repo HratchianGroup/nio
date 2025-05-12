@@ -1,0 +1,13 @@
+%chk=test005b
+#p test uhf aug-cc-pvqz geom=nocrowd output=mat
+
+Test calculation for the NIO program on H2...H2 dimer.
+
+1  2
+H      0.0   0.0   0.0
+H      0.0   0.0   0.4
+H      0.7   0.0   0.0
+H      0.7   0.0   0.4
+
+test005b.mat
+
