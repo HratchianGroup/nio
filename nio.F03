@@ -66,7 +66,7 @@
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO'/,  &
-             1x,'Version 2025.05.10.00')
+             1x,'Version 2025.06.02.00')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
@@ -120,7 +120,7 @@
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=2,  &
+      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=6,  &
         newerThanRevision=0)) then
         write(iOut,9000)
         goto 999
@@ -516,11 +516,6 @@
         float(relaxationNumberAlphaV2O),  &
         float(relaxationNumberBetaO2V),  &
         float(relaxationNumberBetaV2O)
-
-!hph+
-!      goto 999
-!hph-
-
 
 !hph+
 !!
