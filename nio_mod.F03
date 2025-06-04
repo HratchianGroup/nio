@@ -87,18 +87,14 @@
 
       do i = 1,nBasis
         if(vector(i).ge.0.999) then
-          vector(i) = dfloat(0)
+          vector(i) = mqc_float(0)
           iPlusOne = i
           nPlusOne = nPlusOne + 1
         endIf
       endDo
       do i = 1,nBasis
         if(vector(i).le.-0.999) then
-#ifdef PGI
-          vector(i) = dfloat(0)
-#else
-          vector(i) = float(0)
-#endif
+          vector(i) = mqc_float(0)
           iMinusOne = i
           nMinusOne = nMinusOne + 1
         endIf
@@ -300,11 +296,7 @@
 !
       nBasis = Size(eigenvalues)
       allocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
-#ifdef PGI
-      tmpMatrix = dfloat(0)
-#else
-      tmpMatrix = float(0)
-#endif
+      tmpMatrix = mqc_float(0)
       call string_change_case(model,'U',myModel)
       select case(TRIM(myModel))
       case('ATTACHMENT')
@@ -350,7 +342,7 @@
       end select
       densityOut = tmpMatrix
 !
-      deAllocate(tmpVector(nBasis),tmpMatrix(nBasis,nBasis))
+      deAllocate(tmpVector,tmpMatrix)
       return
       end function partitionDensityMatrix
 
