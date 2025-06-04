@@ -416,7 +416,7 @@
       write(iOut,3000) nPlusOneAlpha,nMinusOneAlpha,nPlusOneBeta,  &
         nMinusOneBeta
       if(iPrint.ge.1.or.DEBUG) write(iOut,3100) isNIO,isDDNO
-      if(.not.(isNIO.xor.isDDNO))  &
+      if(isNIO.eqv.isDDNO)  &
         call mqc_error('Confused about NIO or DDNO job.')
       if(isNIO) write(iOut,1500) float(TDOverlapA*TDOverlapB),  &
         float(TDOverlapA),float(TDOverlapB)
