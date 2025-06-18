@@ -25,7 +25,7 @@ FC          = nvfortran
 # FC        = gfortran
 MQCDir      = $(mqcinstall)
 LIBSALGEBRA = -llapack -lblas
-USEOMP      = no
+USEOMP      = yes
 #
 # Set-up flags that should not need to be changed by the user...
 #

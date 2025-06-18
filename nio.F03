@@ -123,7 +123,7 @@
 !     it's a supported version.
 !
       if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=6,  &
-        newerThanRevision=0)) then
+        newerThanRevision=3)) then
         write(iOut,9000)
         goto 999
       endIf
