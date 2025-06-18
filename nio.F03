@@ -66,7 +66,7 @@
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO'/,  &
-             1x,'Version 2025.06.02.00')
+             1x,'Version 2025.06.18.00')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
@@ -92,14 +92,16 @@
         3x,'BETA : Attachement Number: ',F6.3,/,  &
         10x,'Detachment  Number: ',F6.3)
  2100 Format(/,1x,'Excitation/Relaxation Density Analysis',/,  &
-        3x,'ALPHA: Excitation Number o->v: ',F6.3,/,  &
-        3x,'       Excitation Number v->o: ',F6.3,/,  &
-        3x,'BETA : Excitation Number o->v: ',F6.3,/,  &
-        3x,'       Excitation Number v->o: ',F6.3,/,  &
-        3x,'ALPHA: Relaxation Number o->v: ',F6.3,/,  &
-        3x,'       Relaxation Number v->o: ',F6.3,/,  &
-        3x,'BETA : Relaxation Number o->v: ',F6.3,/,  &
-        3x,'       Relaxation Number v->o: ',F6.3,/)
+        3x,'ALPHA: Excitation Population o->v: ',F6.3,/,  &
+        3x,'       Excitation Population v->o: ',F6.3,/,  &
+        3x,'BETA : Excitation Population o->v: ',F6.3,/,  &
+        3x,'       Excitation Population v->o: ',F6.3,/,  &
+        3x,'TOTAL: Excitation Population:      ',F6.3,/,/,  &
+        3x,'ALPHA: Relaxation Population o->v: ',F6.3,/,  &
+        3x,'       Relaxation Population v->o: ',F6.3,/,  &
+        3x,'BETA : Relaxation Population o->v: ',F6.3,/,  &
+        3x,'       Relaxation Population v->o: ',F6.3,/,  &
+        3x,'TOTAL: Relaxation Population:      ',F6.3,/)
  3000 Format(/,1x,'DDNO/NIO Excitation/Detachment Number',/,  &
         3x,'ALPHA: Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2,/,  &
@@ -121,7 +123,7 @@
 !     it's a supported version.
 !
       if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=6,  &
-        newerThanRevision=0)) then
+        newerThanRevision=3)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -307,13 +309,14 @@
       deltaSCFEnergy = scfEnergy2-scfEnergy1
       write(iOut,1200) 'SCF',scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
-        deltaSCFEnergy*evPHartree*nmPev
+        mqc_float(10000000)*(planck*sLight)/(deltaSCFEnergy*jPHartree)
       totalEnergy1 = GMatrixFile1%getValReal('energy')
       totalEnergy2 = GMatrixFile2%getValReal('energy')
       deltaTotalEnergy = totalEnergy2-totalEnergy1
       write(iOut,1200) 'Total',totalEnergy1,totalEnergy2,  &
         deltaTotalEnergy,deltaTotalEnergy*evPHartree,  &
-        deltaTotalEnergy*cmM1PHartree,deltaTotalEnergy*evPHartree*nmPev
+        deltaTotalEnergy*cmM1PHartree,  &
+        mqc_float(10000000)*(planck*sLight)/(deltaTotalEnergy*jPHartree)
 !
 !     Form the difference density and construct the DDNOs, which are NIOs in
 !     electron detachment cases.
@@ -507,15 +510,16 @@
       call MO_partition(relaxationMatrixBeta,PMatrixBeta1MO,  &
         traceXoo=relaxationNumberBetaO2V,  &
         traceXvv=relaxationNumberBetaV2O)
-
       write(iOut,2100) float(excitationNumberAlphaO2V),  &
         float(excitationNumberAlphaV2O),  &
         float(excitationNumberBetaO2V),  &
         float(excitationNumberBetaV2O),  &
+        float(excitationNumberAlphaV2O)+float(excitationNumberBetaV2O),  &
         float(relaxationNumberAlphaO2V),  &
         float(relaxationNumberAlphaV2O),  &
         float(relaxationNumberBetaO2V),  &
-        float(relaxationNumberBetaV2O)
+        float(relaxationNumberBetaV2O),  &
+        float(relaxationNumberAlphaV2O)+float(relaxationNumberBetaV2O)
 
 !hph+
 !!
