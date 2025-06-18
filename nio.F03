@@ -92,14 +92,16 @@
         3x,'BETA : Attachement Number: ',F6.3,/,  &
         10x,'Detachment  Number: ',F6.3)
  2100 Format(/,1x,'Excitation/Relaxation Density Analysis',/,  &
-        3x,'ALPHA: Excitation Number o->v: ',F6.3,/,  &
-        3x,'       Excitation Number v->o: ',F6.3,/,  &
-        3x,'BETA : Excitation Number o->v: ',F6.3,/,  &
-        3x,'       Excitation Number v->o: ',F6.3,/,  &
-        3x,'ALPHA: Relaxation Number o->v: ',F6.3,/,  &
-        3x,'       Relaxation Number v->o: ',F6.3,/,  &
-        3x,'BETA : Relaxation Number o->v: ',F6.3,/,  &
-        3x,'       Relaxation Number v->o: ',F6.3,/)
+        3x,'ALPHA: Excitation Population o->v: ',F6.3,/,  &
+        3x,'       Excitation Population v->o: ',F6.3,/,  &
+        3x,'BETA : Excitation Population o->v: ',F6.3,/,  &
+        3x,'       Excitation Population v->o: ',F6.3,/,  &
+        3x,'TOTAL: Excitation Population:      ',F6.3,/,/,  &
+        3x,'ALPHA: Relaxation Population o->v: ',F6.3,/,  &
+        3x,'       Relaxation Population v->o: ',F6.3,/,  &
+        3x,'BETA : Relaxation Population o->v: ',F6.3,/,  &
+        3x,'       Relaxation Population v->o: ',F6.3,/,  &
+        3x,'TOTAL: Relaxation Population:      ',F6.3,/)
  3000 Format(/,1x,'DDNO/NIO Excitation/Detachment Number',/,  &
         3x,'ALPHA: Attachment Number: ',I2,/,  &
         10x,'Detachment Number: ',I2,/,  &
@@ -507,15 +509,16 @@
       call MO_partition(relaxationMatrixBeta,PMatrixBeta1MO,  &
         traceXoo=relaxationNumberBetaO2V,  &
         traceXvv=relaxationNumberBetaV2O)
-
       write(iOut,2100) float(excitationNumberAlphaO2V),  &
         float(excitationNumberAlphaV2O),  &
         float(excitationNumberBetaO2V),  &
         float(excitationNumberBetaV2O),  &
+        float(excitationNumberAlphaV2O)+float(excitationNumberBetaV2O),  &
         float(relaxationNumberAlphaO2V),  &
         float(relaxationNumberAlphaV2O),  &
         float(relaxationNumberBetaO2V),  &
-        float(relaxationNumberBetaV2O)
+        float(relaxationNumberBetaV2O),  &
+        float(relaxationNumberAlphaV2O)+float(relaxationNumberBetaV2O)
 
 !hph+
 !!

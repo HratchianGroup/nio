@@ -21,11 +21,11 @@
 #
 # Set-up flags that may need changes based on user configuration...
 #
-#FC          = nvfortran
-FC        ?= gfortran
+FC          = nvfortran
+# FC        = gfortran
 MQCDir      = $(mqcinstall)
 LIBSALGEBRA = -llapack -lblas
-USEOMP      = yes
+USEOMP      = no
 #
 # Set-up flags that should not need to be changed by the user...
 #
