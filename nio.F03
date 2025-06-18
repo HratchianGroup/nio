@@ -309,13 +309,14 @@
       deltaSCFEnergy = scfEnergy2-scfEnergy1
       write(iOut,1200) 'SCF',scfEnergy1,scfEnergy2,deltaSCFEnergy,  &
         deltaSCFEnergy*evPHartree,deltaSCFEnergy*cmM1PHartree,  &
-        deltaSCFEnergy*evPHartree*nmPev
+        mqc_float(10000000)*(planck*sLight)/(deltaSCFEnergy*jPHartree)
       totalEnergy1 = GMatrixFile1%getValReal('energy')
       totalEnergy2 = GMatrixFile2%getValReal('energy')
       deltaTotalEnergy = totalEnergy2-totalEnergy1
       write(iOut,1200) 'Total',totalEnergy1,totalEnergy2,  &
         deltaTotalEnergy,deltaTotalEnergy*evPHartree,  &
-        deltaTotalEnergy*cmM1PHartree,deltaTotalEnergy*evPHartree*nmPev
+        deltaTotalEnergy*cmM1PHartree,  &
+        mqc_float(10000000)*(planck*sLight)/(deltaTotalEnergy*jPHartree)
 !
 !     Form the difference density and construct the DDNOs, which are NIOs in
 !     electron detachment cases.
