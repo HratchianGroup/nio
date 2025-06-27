@@ -21,7 +21,7 @@
 #
 # Set-up flags that may need changes based on user configuration...
 #
-FC          = nvfortran
+  FC        = nvfortran
 # FC        = gfortran
 MQCDir      = $(mqcinstall)
 LIBSALGEBRA = -llapack -lblas
@@ -35,7 +35,7 @@ ifeq ($(FC),gfortran)
   ifeq ($(USEOMP),yes)
     OMPFLAGS = -fopenmp
   endif
-  LIBS    =  $(LIBSALGEBRA) $(MQCLIB)/libmqc.a -L/opt/intel/oneapi/mkl/2022.2.0/lib/intel64
+  LIBS    =  $(LIBSALGEBRA) $(MQCLIB)/libmqc.a -lmkl_rt
   FCFLAGS = -std=f2008 -fdefault-real-8 -fdefault-integer-8 $(OMPFLAGS)
 else ifeq ($(FC),nvfortran)
   MQCMODS      = $(MQCDir)/NVidia/mod
