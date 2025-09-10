@@ -400,7 +400,37 @@
 !
       return
       end subroutine MO_partition
-!
+
+
+!hph+
+!      subroutine correspondingOrbitals(nBasis,nOcc1,nVirt1,nOcc2,  &
+!        nVirt2,CMO1,CMO2,overlapAO)
+!!
+!!     This subroutine carries out biorthogonalization and calculates
+!!     corresponding orbitals between two sets of MOs, CMO1 and CMO2. It is
+!!     assumed the two sets of MOs are expanded over the same set of AOs with
+!!     overlap matrix <overlapAO>.
+!!
+!!     - H. P. Hratchian, 2025.
+!!
+!!
+!      implicit none
+!      integer(kind=int64),intent(in)::nBasis,nOcc1,nVirt1,nOcc2,nVirt2
+!      type(MQC_Variable),intent(in)::CMO1,CMO2,overlapAO
+!      type(MQC_Variable)::overlapMO
+!!
+!!
+!!     Begin by building the overlap matrix between occupied MOs of the two sets
+!!     of MOs.
+!!
+!      overlapMO = MatMul(Transpose(CMO1%subMatrix([1,nBasis],[1,nOcc1])),  &
+!        MatMul(overlapAO,CMO2%subMatrix([1,nBasis],[1,nOcc2])))
+!hph-
+
+
+
+
+
 !
 !
       end module nio_mod
