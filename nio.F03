@@ -66,7 +66,7 @@
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO'/,  &
-             1x,'Version 2025.09.29.00')
+             1x,'Version 2025.09.29.01')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
@@ -270,6 +270,7 @@
       call GMatrixFile1%getArray('ALPHA DENSITY MATRIX',  &
         mqcVarOut=PMatrixCorrAlpha1,foundOut=found)
       postSCF = found
+      postSCF = .false.
 
       write(iOut,*)' Hrant - postSCF = ',postSCF
       if(postSCF) then
@@ -731,39 +732,6 @@
 
 !hph+
       goto 998
-!hph-
-
-
-!hph+
-      write(*,*)
-      write(*,*)
-      write(*,*)' Hrant - Calling categorization routine...'
-      call categorizeDDNOs(diffDensityAlphaEVals,infoDDNOsAlpha,nRelaxationDDNOsAlpha)
-      call categorizeDDNOs(diffDensityBetaEVals,infoDDNOsBeta,nRelaxationDDNOsBeta)
-      write(*,*)' Hrant - Back from categorization routine!'
-      write(*,*)
-      write(*,*)
-      write(*,*)' Hrant - Calling projectDDNOs for ALPHA spin...'
-      call projectDDNOs(infoDDNOsAlpha,DDNOsAlpha,SMatrixAO,CAlpha1,  &
-        nElAlpha1,nRelaxationDDNOsAlpha,diffDensityAlpha)
-      write(*,*)
-      write(*,*)
-      write(*,*)' Hrant - Calling projectDDNOs for BETA  spin...'
-      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,  &
-        nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
-      write(*,*)
-
-      goto 998
-
-      write(*,*)
-      write(*,*)' Hrant - Calling projectDDNOs for BETA spin...'
-      call projectDDNOs(infoDDNOsBeta,DDNOsBeta,SMatrixAO,CBeta1,  &
-        nElBeta1,nRelaxationDDNOsBeta,diffDensityBeta)
-      write(*,*)
-      write(*,*)' Hrant - Back from calling projectDDNOs!'
-      write(*,*)
-      write(*,*)
-      
 !hph-
 
   998 Continue

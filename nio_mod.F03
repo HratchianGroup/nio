@@ -75,14 +75,10 @@
       do i = 1,nBasis
         overlapTest = overlapTest*(1.0-vector(i)**2)
       endDo
-      write(iOut,*)' Hrant - overlap test 1   : ',overlapTest
-      write(iOut,*)' Hrant - overlap test 1**2: ',overlapTest**2
       overlapTest = 1.0
       do i = 1,nBasis
         overlapTest = overlapTest*sqrt(abs((1.0-vector(i)**2)))
       endDo
-      write(iOut,*)' Hrant - overlap test 2   : ',overlapTest
-      write(iOut,*)' Hrant - overlap test 2**2: ',overlapTest**2
 !hph-
 
       do i = 1,nBasis
