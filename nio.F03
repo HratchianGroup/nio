@@ -66,7 +66,7 @@
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO'/,  &
-             1x,'Version 2025.09.10.00')
+             1x,'Version 2025.09.29.00')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
