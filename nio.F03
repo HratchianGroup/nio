@@ -66,7 +66,7 @@
 !     Format Statements
 !
  1000 Format(1x,'Enter Program NIO'/,  &
-             1x,'Version 2025.06.18.00')
+             1x,'Version 2025.09.29.00')
  1010 Format(1x,'Matrix File 1:      ',A,/,  &
              1x,'Matrix File 2:      ',A,/,  &
              1x,'Output Matrix File: ',A,/)
@@ -122,8 +122,8 @@
 !     Do a check of the mqcPack version the program was built against to ensure
 !     it's a supported version.
 !
-      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=6,  &
-        newerThanRevision=3)) then
+      if(.not.mqc_version_check(newerThanMajor=25,newerThanMinor=9,  &
+        newerThanRevision=0)) then
         write(iOut,9000)
         goto 999
       endIf
@@ -838,6 +838,9 @@
         call GMatrixFileOut%writeArray2('BETA ORBITAL ENERGIES',diffDensityBetaEVals)
         call GMatrixFileOut%writeArray2('ALPHA MO COEFFICIENTS',DDNOsAlpha)
         call GMatrixFileOut%writeArray2('BETA MO COEFFICIENTS',DDNOsBeta)
+        call GMatrixFileOut%writeArray2('ALPHA SCF DENSITY MATRIX',PMatrixAlpha1,storage='l')
+        call GMatrixFileOut%writeArray2('BETA SCF DENSITY MATRIX',PMatrixBeta1,storage='l')
+!hph        call GMatrixFileOut%writeArray2('BETA SCF DENSITY MATRIX',PMatrixBeta1)
 !
 !       Close out the matrix file.
         call GMatrixFileOut%closeFile()
